@@ -77,7 +77,7 @@ export interface DiscussionTopic {
   authorName: string;
   content: string;
   image?: string;
-  lens?: 'Objektif' | 'Opini' | 'Eksperimen';
+  lens?: string;
   likes: number;
   repliesCount: number;
   replies?: Reply[];
@@ -124,9 +124,9 @@ const INITIAL_BADGES: Badge[] = [
 ];
 
 const INITIAL_USER: User = {
-  id: 'user-123',
-  username: 'Siswa Kritis',
-  email: 'siswa@outbubble.id',
+  id: 'user-guest',
+  username: '',
+  email: 'guest@outbubble.id',
   photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
   bio: 'Siap memecahkan gelembung informasi!',
   level: 1,
@@ -160,7 +160,7 @@ const INITIAL_USER: User = {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      user: null, // Mulai dengan null (tidak login)
+      user: INITIAL_USER, // Selalu ada user (Guest mode aktif otomatis)
       sidebarOpen: true,
       themeMode: 'light',
       topics: [
