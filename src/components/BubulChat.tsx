@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, RefreshCw, User, X, Sparkles } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { useStore } from '../lib/store';
 import { cn } from '../lib/utils';
 
-// Konfigurasi Gemini API (Pastikan ENV diatur dengan benar)
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+// BubulChat is now a client component calling a server API proxy
 
 const SYSTEM_INSTRUCTION = `
   Nama kamu adalah Bubul, asisten virtual dari OutBubble berwujud gelembung ceria. 
@@ -23,6 +21,26 @@ const SYSTEM_INSTRUCTION = `
 interface BubulChatProps {
   onClose?: () => void;
 }
+
+const BubulMascot: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={cn("relative flex items-center justify-center", className)}>
+    {/* Body - Multi-layered bubble with glow */}
+    <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 via-blue-300 to-white rounded-full animate-pulse blur-[2px]" />
+    <div className="w-full h-full bg-gradient-to-br from-blue-400/80 to-indigo-500/80 rounded-full border-2 border-white shadow-inner flex items-center justify-center relative overflow-hidden">
+      {/* Glossy highlight */}
+      <div className="absolute top-1 left-2 w-1/2 h-1/2 bg-white/30 rounded-full blur-[4px]" />
+      
+      {/* Face */}
+      <div className="flex gap-2 mb-1">
+        <div className="w-3 h-3 bg-[#031466] rounded-full" />
+        <div className="w-3 h-3 bg-[#031466] rounded-full" />
+      </div>
+    </div>
+    {/* Blushed cheeks */}
+    <div className="absolute bottom-1/4 left-1/4 w-3 h-1.5 bg-pink-300/50 rounded-full blur-[1px]" />
+    <div className="absolute bottom-1/4 right-1/4 w-3 h-1.5 bg-pink-300/50 rounded-full blur-[1px]" />
+  </div>
+);
 
 const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
   const { user } = useStore();
@@ -71,13 +89,15 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
         parts: [{ text: m.text }],
       }));
 
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash", 
-        contents: contents,
-        config: { systemInstruction: SYSTEM_INSTRUCTION }
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents })
       });
 
-      const text = response.text || "Aduh, kepalaku pusing. Ulangi lagi dong... 🫧";
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      const text = data.text || "Aduh, kepalaku pusing. Ulangi lagi dong... 🫧";
       setMessages(prev => [...prev, { role: 'bubul', text: text }]);
     } catch (error) {
       setMessages(prev => [...prev, { role: 'bubul', text: "Maaf ya, koneksiku ke pusat pengetahuan sedang terputus! 🫧" }]);
@@ -102,13 +122,9 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
         <motion.div 
           animate={{ y: [-5, 5, -5] }}
           transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-          className="absolute -top-[90px] w-[140px] h-[140px] pointer-events-none drop-shadow-xl"
+          className="absolute -top-[70px] w-[120px] h-[120px] pointer-events-none drop-shadow-xl"
         >
-          <img 
-            src="/maskot.png" // PASTIKAN FILE MASKOT.PNG ADA DI FOLDER PUBLIC
-            alt="Bubul Maskot"
-            className="w-full h-full object-contain"
-          />
+          <BubulMascot className="w-full h-full" />
         </motion.div>
 
         {/* Tombol Close */}
@@ -143,9 +159,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
           >
             {/* Ikon Pengguna / Maskot Kecil */}
             {msg.role === 'bubul' ? (
-              <div className="w-8 h-8 rounded-full shrink-0 shadow-sm overflow-hidden bg-blue-50 border border-blue-100 flex items-center justify-center">
-                 <img src="/maskot.png" alt="Bubul" className="w-6 h-6 object-contain translate-y-1" />
-              </div>
+              <BubulMascot className="w-8 h-8 rounded-full shrink-0 shadow-sm" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-[#031466] text-white flex items-center justify-center shrink-0 shadow-sm">
                 <User size={14} />
@@ -171,9 +185,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
               className="flex items-center gap-3"
             >
-               <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 overflow-hidden flex items-center justify-center">
-                 <img src="/maskot.png" alt="Bubul" className="w-6 h-6 object-contain opacity-50 translate-y-1" />
-               </div>
+               <BubulMascot className="w-8 h-8 opacity-50" />
                <div className="px-5 py-3 bg-white rounded-full border border-blue-100 flex items-center gap-2 shadow-sm">
                   <RefreshCw size={14} className="animate-spin text-blue-500" />
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Memproses...</span>
