@@ -10,14 +10,12 @@ import Forum from './components/Forum';
 import InsightSosial from './components/InsightSosial';
 import Profile from './components/Profile';
 import BubulChat from './components/BubulChat';
-import Login from './components/Login';
 
 function App() {
   return (
     <Router>
       <Layout>
         <Routes>
-          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Home />} />
           <Route path="/materi" element={<Materi />} />
           <Route path="/tes" element={<TesSimulasi />} />
