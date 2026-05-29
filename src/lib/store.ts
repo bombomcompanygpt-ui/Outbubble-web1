@@ -87,13 +87,19 @@ export interface DiscussionTopic {
   createdAt?: string;
 }
 
+export interface ChatMessage {
+  role: 'bubul' | 'user';
+  text: string;
+}
+
 interface AppState {
   user: User | null;
   sidebarOpen: boolean;
   themeMode: 'light' | 'dark';
   topics: DiscussionTopic[];
   reflections: Reflection[];
-  quizResults: QuizResult[]; // Global quiz results if needed, or derived from user
+  quizResults: QuizResult[]; 
+  chatHistory: ChatMessage[];
   setUser: (user: User | null) => void;
   toggleSidebar: () => void;
   setThemeMode: (mode: 'light' | 'dark') => void;
@@ -112,6 +118,7 @@ interface AppState {
   updateProfile: (updates: Partial<User>) => void;
   buyItem: (item: any) => void;
   playSound: (type: string) => void;
+  setChatHistory: (history: ChatMessage[]) => void;
 }
 
 const INITIAL_BADGES: Badge[] = [
@@ -168,9 +175,11 @@ export const useStore = create<AppState>()(
       ],
       reflections: [],
       quizResults: [],
+      chatHistory: [],
       setUser: (user) => set({ user }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setThemeMode: (mode) => set({ themeMode: mode }),
+      setChatHistory: (history) => set({ chatHistory: history }),
       addXP: (xp) => set((state) => {
         if (!state.user) return state;
         const newXP = state.user.xp + xp;
