@@ -1,319 +1,1024 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Zap, CheckCircle2, Award, RefreshCcw, Sparkles, ArrowRight, ChevronRight, X, Play, BookOpen, FileCheck, Map, Lock
+  Zap, CheckCircle2, Award, RefreshCw, Sparkles, ChevronRight, X, Play, BookOpen, 
+  Map as MapIcon, Lock, Trophy, Star, Compass, HelpCircle, Heart, Shield, Trees, 
+  Atom, Waves, AlertCircle, Coins, Flame, ChevronLeft
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { cn } from '../lib/utils';
+import { generateQuestion } from '../lib/quizUtils';
 
-// --- 1. SMART QUESTION ENGINE (RANDOMIZED OPTIONS & ACADEMIC EXPLANATIONS) ---
-const generateQuestion = (level: number, index: number, mode: 'pre' | 'quiz' | 'post') => {
-  const seed = (level * 10) + index;
+// --- 1. BIOMES DATABASE (DESA BUBUL DISTRICTS) ---
+interface Biome {
+  name: string;
+  description: string;
+  subTitle: string;
+  themeClass: string;
+  bgGradient: string;
+  islandGradientStart: string;
+  islandGradientEnd: string;
+  shoreColor: string;
+  rippleColor: string;
+  roadColor: string;
+  roadCenterColor: string;
+  nodeColor: string;
+  activeColor: string;
+  borderColor: string;
+  accentTextColor: string;
+  particleColor: string;
+  icon: React.ReactNode;
+  landmarks: { level: number; label: string; x: number; y: number; icon: string }[];
+  sceneryIcons: string[];
+  seaOrnaments: { icon: string; x: number; y: number; animate?: string }[];
+}
 
-  // Fungsi Helper untuk mengacak pilihan jawaban (Fisher-Yates)
-  const shuffleArray = (array: string[], correctText: string) => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return {
-      options: shuffled,
-      correctIdx: shuffled.indexOf(correctText)
-    };
-  };
-  
-  const library = [
-    { m: "M01", t: "Algoritma Feed", d: "instruksi matematis penentu konten berdasarkan perilaku", e: "Algoritma bekerja secara otomatis dengan menganalisis data perilaku pengguna seperti durasi tonton dan interaksi untuk menciptakan umpan balik yang personal." },
-    { m: "M01", t: "Attention Economy", d: "perhatian sebagai komoditas yang dijual ke pengiklan", e: "Dalam attention economy, laba platform digital bergantung pada seberapa lama mereka bisa menahan perhatian pengguna agar nilai iklan semakin tinggi." },
-    { m: "M02", t: "Filter Bubble", d: "isolasi informasi otomatis oleh algoritma", e: "Filter bubble menutup akses kita ke informasi yang berbeda, sehingga kita hanya melihat realitas yang mendukung pandangan kita saja." },
-    { m: "M03", t: "Echo Chamber", d: "ruang gema yang memperkuat opini homogen secara aktif", e: "Echo chamber terjadi saat kita secara sadar memilih lingkungan sosial yang hanya berisi suara-suara yang mendukung opini kita sendiri." },
-    { m: "M04", t: "Bias Konfirmasi", d: "kecenderungan otak mencari pembenaran keyakinan", e: "Otak manusia memiliki bias untuk lebih memercayai informasi yang mendukung keyakinannya dan menolak informasi yang membuktikannya salah." },
-    { m: "M05", t: "Fragmentasi Sosial", d: "pecahnya ikatan antar kelompok masyarakat", e: "Fragmentasi sosial mengakibatkan kelompok masyarakat terpecah menjadi unit-kelompok kecil yang tidak lagi memiliki bahasa atau pemahaman bersama." },
-    { m: "M06", t: "Post-Truth", d: "kondisi emosi lebih dipercaya daripada fakta objektif", e: "Di era post-truth, fakta ilmiah seringkali kalah telak dengan narasi yang menyentuh emosi atau identitas personal pengguna." },
-    { m: "M07", t: "Polarisasi Afektif", d: "kebencian emosional antar kubu politik", e: "Polarisasi afektif membuat seseorang tidak hanya berbeda pendapat secara politik, tapi juga membenci orang dari kubu lawan secara pribadi." },
-    { m: "M08", t: "Radikalisasi Online", d: "proses bertahap menuju paham ekstrem via algoritma", e: "Proses ini memanfaatkan algoritma yang terus menyajikan konten yang semakin provokatif untuk menjaga keterlibatan (engagement) pengguna." },
-    { m: "M09", t: "Chat Chamber Effect", d: "AI yang hanya memantulkan keinginan pengguna", e: "AI chatbot seringkali menunjukkan sifat 'sycophancy' atau selalu menyetujui opini pengguna daripada memberikan fakta yang objektif namun tidak nyaman." },
-    { m: "M10", t: "Literasi Digital", d: "kemampuan kritis mengevaluasi informasi", e: "Literasi digital bukan sekadar mahir teknologi, melainkan kemampuan untuk memverifikasi, menganalisis, dan mengevaluasi kebenaran informasi." }
-  ];
-
-  if (mode === 'pre' || mode === 'post') {
-    const scenarios = [
-      { q: "Apa yang paling tepat dilakukan saat menerima informasi yang memicu amarah?", o: ["Verifikasi sumber sebelum bereaksi", "Segera bagikan agar orang lain waspada", "Langsung percaya jika sesuai keyakinan", "Mengabaikannya tanpa peduli"], c: "Verifikasi sumber sebelum bereaksi", e: "Berhenti sejenak dan melakukan verifikasi adalah langkah kunci literasi digital untuk memutus rantai disinformasi." },
-      { q: "Mengapa algoritma TikTok bisa membuat seseorang terpapar konten ekstrem?", o: ["Karena mengejar engagement/durasi tonton", "Karena sistem keamanan yang lemah", "Karena campur tangan manual admin", "Hanya terjadi jika kita mencarinya"], c: "Karena mengejar engagement/durasi tonton", e: "Algoritma dioptimalkan untuk Attention Economy, yang mana konten provokatif terbukti lebih lama menahan perhatian pengguna." },
-      { q: "Kondisi di mana kita tidak tahu apa yang tidak kita ketahui karena disaring algoritma disebut...", o: ["Filter Bubble", "Echo Chamber", "Post-Truth", "Deepfake"], c: "Filter Bubble", e: "Filter bubble menyaring informasi secara pasif sehingga Anda tidak sadar telah kehilangan perspektif lain." },
-      { q: "Fenomena 'Cebong vs Kampret' di Indonesia merupakan contoh nyata dari...", o: ["Fragmentasi Sosial & Polarisasi", "Kecanggihan Teknologi", "Literasi Digital Tinggi", "Sistem Rekomendasi AI"], c: "Fragmentasi Sosial & Polarisasi", e: "Konflik ini menunjukkan bagaimana ruang digital memecah masyarakat menjadi kubu identitas yang bermusuhan secara emosional." },
-      { q: "Apa yang dimaksud dengan 'Dopamine Loop' di media sosial?", o: ["Siklus candu dari notifikasi dan likes", "Proses pembersihan data akun", "Sistem pengiriman pesan rahasia", "Algoritma pencarian kata kunci"], c: "Siklus candu dari notifikasi dan likes", e: "Interaksi sosial digital memicu pelepasan dopamin di otak, menciptakan ketergantungan mental untuk terus membuka aplikasi." },
-      { q: "Mengapa berita palsu menyebar 6x lebih cepat dibanding berita benar?", o: ["Karena lebih mengejutkan dan provokatif", "Karena jumlah bot lebih banyak", "Karena berita benar sulit ditulis", "Karena internet terlalu lambat"], c: "Karena lebih mengejutkan dan provokatif", e: "Riset MIT menunjukkan bahwa emosi negatif dan unsur kebaruan pada hoaks memicu impuls manusia untuk berbagi lebih cepat." },
-      { q: "Saat otak kita hanya mencari informasi yang membenarkan opini kita, kita mengalami...", o: ["Bias Konfirmasi", "Critical Thinking", "Digital Citizenship", "Selective Memory"], c: "Bias Konfirmasi", e: "Bias konfirmasi adalah filter kognitif yang membuat kita menutup diri dari kebenaran yang bertentangan dengan keyakinan kita." },
-      { q: "Bahaya utama dari Deepfake dalam konteks politik adalah...", o: ["Runtuhnya kepercayaan pada bukti visual", "Kualitas video yang buruk", "Hanya bisa dibuat oleh ahli", "Tidak berpengaruh pada opini"], c: "Runtuhnya kepercayaan pada bukti visual", e: "Deepfake merusak epistemologi masyarakat; orang menjadi sulit membedakan mana bukti nyata dan mana rekayasa digital." },
-      { q: "Echo Chamber berbeda dengan Filter Bubble karena...", o: ["Melibatkan pilihan aktif pengguna", "Bekerja secara otomatis oleh mesin", "Hanya terjadi di Google Search", "Tidak memiliki dampak negatif"], c: "Melibatkan pilihan aktif pengguna", e: "Echo chamber diperkuat oleh perilaku kita yang sengaja memilih lingkungan pertemanan yang hanya berisi satu pemikiran saja." },
-      { q: "Apa inti dari solusi literasi digital menurut model Finlandia?", o: ["Integrasi berpikir kritis sejak dini", "Melarang penggunaan media sosial", "Menghapus semua akun anonim", "Membangun firewall nasional"], c: "Integrasi berpikir kritis sejak dini", e: "Finlandia melatih logika kritis sebagai pertahanan utama masyarakat dalam menghadapi manipulasi informasi." }
-    ];
-    const s = scenarios[index % scenarios.length];
-    const randomized = shuffleArray(s.o, s.c);
-    return { q: s.q, options: randomized.options, correct: randomized.correctIdx, explanation: s.e };
+const BIOMES: Biome[] = [
+  {
+    name: "Dusun Dopamin Feed",
+    subTitle: "Wilayah 1 (Level 1 - 100)",
+    description: "Lembah hijau tempat benih algoritma pertama kali ditanam. Netizen di sini terjebak dalam siklus candu durasi tonton dan kejar-kejaran status likes.",
+    themeClass: "from-emerald-950 via-[#aed581]/90 to-emerald-950",
+    bgGradient: "bg-[#e0f7fa] bg-gradient-to-b from-[#80d8ff] via-[#b2dfdb] to-[#e8f5e9]",
+    islandGradientStart: "#a1e584",
+    islandGradientEnd: "#2e7d32",
+    shoreColor: "#ffe082",
+    rippleColor: "#b2dfdb",
+    roadColor: "#795548",
+    roadCenterColor: "#fbc02d",
+    nodeColor: "bg-emerald-400 hover:bg-emerald-350 border-emerald-600",
+    activeColor: "bg-emerald-500 text-white shadow-emerald-500/50 border-white",
+    borderColor: "stroke-emerald-300",
+    accentTextColor: "text-emerald-800",
+    particleColor: "bg-emerald-400/30",
+    icon: <Trees className="w-5 h-5" />,
+    landmarks: [
+      { level: 1, label: "Gerbang Selamat Datang 🚪", x: 120, y: 350, icon: "🚪" },
+      { level: 15, label: "Sawah Dopamin Medsos 🌾", x: 2600, y: 220, icon: "🌾" },
+      { level: 45, label: "Kincir Likes & FYP Racun 🎡", x: 8000, y: 480, icon: "🎡" },
+      { level: 80, label: "Sumur Ketergantungan Dopamin 💧", x: 14200, y: 200, icon: "💧" }
+    ],
+    sceneryIcons: ["🌳", "🌲", "🏡", "🌾", "🌻", "🍎", "🛖", "🐄", "🐑", "🐓", "🌻", "🌳", "🏡", "🌳", "🪵", "🐄"],
+    seaOrnaments: [
+      { icon: "⛵", x: 450, y: 65, animate: "animate-bounce" },
+      { icon: "🐋", x: 1250, y: 520, animate: "animate-pulse" },
+      { icon: "⛵", x: 3800, y: 55, animate: "animate-bounce" },
+      { icon: "🐬", x: 6200, y: 510, animate: "animate-pulse" },
+      { icon: "⛵", x: 9500, y: 70, animate: "animate-bounce" },
+      { icon: "🐳", x: 13500, y: 520, animate: "animate-pulse" }
+    ]
+  },
+  {
+    name: "Lembah Filter Bubble",
+    subTitle: "Wilayah 2 (Level 101 - 200)",
+    description: "Daerah berkabut tebal yang dikelilingi ribuan gelembung udara transparan. Setiap warga hanya bisa melihat pantulan ketertarikan mereka sendiri.",
+    themeClass: "from-cyan-950 via-[#80deea]/90 to-cyan-950",
+    bgGradient: "bg-[#e0f7fa] bg-gradient-to-b from-[#b3e5fc] via-[#80deea] to-[#e0f2f1]",
+    islandGradientStart: "#80deea",
+    islandGradientEnd: "#00acc1",
+    shoreColor: "#b2ebf2",
+    rippleColor: "#ffffff",
+    roadColor: "#006064",
+    roadCenterColor: "#e0f7fa",
+    nodeColor: "bg-cyan-400 hover:bg-cyan-350 border-cyan-650",
+    activeColor: "bg-cyan-500 text-white shadow-cyan-500/50 border-white",
+    borderColor: "stroke-cyan-300",
+    accentTextColor: "text-cyan-800",
+    particleColor: "bg-cyan-400/30",
+    icon: <Atom className="w-5 h-5" />,
+    landmarks: [
+      { level: 105, label: "Kubah Informasi Satu Sisi 🛡️", x: 1000, y: 200, icon: "🛡️" },
+      { level: 140, label: "Laboratorium Algoritma Pasif 🧪", x: 7200, y: 460, icon: "🧪" },
+      { level: 180, label: "Hutan Gelembung Terisolasi 🌳", x: 14400, y: 220, icon: "🌳" }
+    ],
+    sceneryIcons: ["🫧", "🔮", "🧪", "🌁", "💠", "🎐", "🧬", "🫧", "🔬", "🛰️", "🛸", "🫧", "💎", "🪞", "🫧"],
+    seaOrnaments: [
+      { icon: "🛸", x: 750, y: 45, animate: "animate-pulse" },
+      { icon: "🫧", x: 2300, y: 515, animate: "animate-bounce" },
+      { icon: "🛸", x: 5500, y: 55, animate: "animate-pulse" },
+      { icon: "💎", x: 8200, y: 520, animate: "animate-bounce" },
+      { icon: "🫧", x: 11000, y: 60, animate: "animate-bounce" },
+      { icon: "🛸", x: 14100, y: 530, animate: "animate-pulse" }
+    ]
+  },
+  {
+    name: "Puncak Echo Chamber",
+    subTitle: "Wilayah 3 (Level 201 - 300)",
+    description: "Tebing terjal bersejarah berwarna lembayung purba. Gemuruh suara dan opini baperan di sini memantul tiada henti, membungkam kebenaran luar.",
+    themeClass: "from-purple-950 via-[#b39ddb]/90 to-purple-950",
+    bgGradient: "bg-[#eedefc] bg-gradient-to-b from-[#311b92]/70 via-[#673ab7]/50 to-[#eedefc]",
+    islandGradientStart: "#d1c4e9",
+    islandGradientEnd: "#7e57c2",
+    shoreColor: "#e1bee7",
+    rippleColor: "#ffffff",
+    roadColor: "#311b92",
+    roadCenterColor: "#ea80fc",
+    nodeColor: "bg-purple-400 hover:bg-purple-350 border-purple-600",
+    activeColor: "bg-purple-500 text-white shadow-purple-500/50 border-white",
+    borderColor: "stroke-purple-300",
+    accentTextColor: "text-purple-800",
+    particleColor: "bg-purple-400/30",
+    icon: <Waves className="w-5 h-5" />,
+    landmarks: [
+      { level: 210, label: "Gua Pemantul Opini Homogen 🔊", x: 1800, y: 480, icon: "🔊" },
+      { level: 250, label: "Kuil Konfirmasi Bias Batin 🏛️", x: 9000, y: 210, icon: "🏛️" },
+      { level: 290, label: "Celah Suara Mutlak ⛰️", x: 16200, y: 450, icon: "⛰️" }
+    ],
+    sceneryIcons: ["🔊", "🏛️", "🏔️", "📢", "🗿", "🕊️", "⛰️", "🔔", "🏛️", "⛰️", "🗣️", "🗿", "🔔", "🦅"],
+    seaOrnaments: [
+      { icon: "🕊️", x: 800, y: 50, animate: "animate-bounce" },
+      { icon: "🐋", x: 3100, y: 520, animate: "animate-pulse" },
+      { icon: "🪁", x: 5900, y: 55, animate: "animate-bounce" },
+      { icon: "🕊️", x: 8500, y: 512, animate: "animate-pulse" },
+      { icon: "🚢", x: 11900, y: 60, animate: "animate-bounce" },
+      { icon: "🪁", x: 14700, y: 515, animate: "animate-pulse" }
+    ]
+  },
+  {
+    name: "Aliran Polarisasi Sosial",
+    subTitle: "Wilayah 4 (Level 301 - 400)",
+    description: "Sungai bergemuruh membelah desa menjadi api dan es. Di sini netizen mudah diadu domba, membagi dunia menjadi kubu netizen radikal.",
+    themeClass: "from-rose-950 via-[#ffab91]/90 to-rose-950",
+    bgGradient: "bg-[#fbe9e7] bg-gradient-to-b from-[#bf360c]/40 via-[#d84315]/30 to-[#fbe9e7]",
+    islandGradientStart: "#ffab91",
+    islandGradientEnd: "#d84315",
+    shoreColor: "#ffccbc",
+    rippleColor: "#ffe0b2",
+    roadColor: "#212121",
+    roadCenterColor: "#ff5252",
+    nodeColor: "bg-rose-400 hover:bg-rose-350 border-rose-600",
+    activeColor: "bg-rose-500 text-white shadow-rose-500/50 border-white",
+    borderColor: "stroke-rose-300",
+    accentTextColor: "text-rose-800",
+    particleColor: "bg-rose-400/30",
+    icon: <Flame className="w-5 h-5" />,
+    landmarks: [
+      { level: 315, label: "Muara Kubu Cebong-Kampret 🌊", x: 2700, y: 440, icon: "🌊" },
+      { level: 350, label: "Jembatan Retak Fragmentasi 🪵", x: 9000, y: 240, icon: "🪵" },
+      { level: 385, label: "Ngarai Amarah Komentator 🌋", x: 15300, y: 480, icon: "🌋" }
+    ],
+    sceneryIcons: ["🌋", "🌊", "🔥", "⚠️", "⚠️", "🚩", "💥", "🚧", "🏮", "⚡", "🏰", "🏯", "⚔️", "🔥", "🌋"],
+    seaOrnaments: [
+      { icon: "🛶", x: 600, y: 55, animate: "animate-pulse" },
+      { icon: "🌋", x: 2100, y: 515, animate: "animate-bounce" },
+      { icon: "🛶", x: 4400, y: 45, animate: "animate-pulse" },
+      { icon: "🦈", x: 6900, y: 520, animate: "animate-bounce" },
+      { icon: "🛶", x: 9900, y: 65, animate: "animate-pulse" },
+      { icon: "🌋", x: 13900, y: 510, animate: "animate-bounce" }
+    ]
+  },
+  {
+    name: "Kastil Berpikir Kritis",
+    subTitle: "Wilayah 5 (Level 401 - 500)",
+    description: "Kota melayang megah bersinar keemasan. Inilah pusat kesadaran digital, tempat pahlawan OutBubble memelihara literasi digital murni.",
+    themeClass: "from-amber-950 via-[#ffe082]/90 to-amber-950",
+    bgGradient: "bg-[#fffde7] bg-gradient-to-b from-[#f57f17]/40 via-[#ffeb3b]/20 to-[#fffde7]",
+    islandGradientStart: "#ffe082",
+    islandGradientEnd: "#ffb300",
+    shoreColor: "#fff9c4",
+    rippleColor: "#ffffff",
+    roadColor: "#ef6c00",
+    roadCenterColor: "#ffffff",
+    nodeColor: "bg-amber-400 hover:bg-amber-350 border-amber-600",
+    activeColor: "bg-amber-500 text-slate-900 shadow-amber-400/50 border-white",
+    borderColor: "stroke-amber-300",
+    accentTextColor: "text-amber-800",
+    particleColor: "bg-amber-400/30",
+    icon: <Award className="w-5 h-5" />,
+    landmarks: [
+      { level: 410, label: "Menara Verifikasi Fakta 🏰", x: 1800, y: 220, icon: "🏰" },
+      { level: 450, label: "Kebun Logika Tanpa Bias 🌸", x: 9000, y: 460, icon: "🌸" },
+      { level: 495, label: "Singgasana OutBubble Master 👑", x: 17100, y: 350, icon: "👑" }
+    ],
+    sceneryIcons: ["🏰", "👑", "📖", "📚", "💫", "🌟", "☄️", "🛡️", "👼", "🪐", "💎", "📜", "🗼", "🏰", "🎋", "🌟"],
+    seaOrnaments: [
+      { icon: "🎈", x: 650, y: 45, animate: "animate-bounce" },
+      { icon: "🕊️", x: 2300, y: 520, animate: "animate-pulse" },
+      { icon: "🏰", x: 5200, y: 55, animate: "animate-bounce" },
+      { icon: "🎈", x: 8200, y: 515, animate: "animate-pulse" },
+      { icon: "🛸", x: 12100, y: 60, animate: "animate-bounce" },
+      { icon: "👑", x: 15100, y: 520, animate: "animate-pulse" }
+    ]
   }
+];
 
-  // LEVEL QUIZ LOGIC (5000+ VARIATIONS)
-  const topic = library[seed % library.length];
-  const templates = [
-    { q: `Berdasarkan Modul ${topic.m}, apa bahaya utama dari ${topic.t}?`, a: `Dapat menjadi ${topic.d}` },
-    { q: `Bagaimana ${topic.t} mempengaruhi cara masyarakat memproses informasi?`, a: `Dengan bertindak sebagai ${topic.d}` },
-    { q: `Manakah yang mendefinisikan fenomena ${topic.t} di ruang digital?`, a: `Sebuah ${topic.d}` }
-  ];
-  const template = templates[seed % templates.length];
-  
-  const distractors = library
-    .filter(item => item.t !== topic.t)
-    .sort(() => 0.5 - Math.random())
-    .slice(0, 3)
-    .map(item => `Proses ${item.d}`);
-
-  const randomized = shuffleArray([template.a, ...distractors], template.a);
-
-  return {
-    q: template.q,
-    options: randomized.options,
-    correct: randomized.correctIdx,
-    explanation: topic.e
-  };
-};
-
-// --- 2. ASSETS ---
-const Assets = {
-  SolidStar: ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" className={className} width="100%" height="100%">
-      <polygon points="12,2 15,9 22,9 17,14 18,21 12,17 6,21 7,14 2,9 9,9" fill="#ffc107" stroke="#b45309" strokeWidth="1" />
-    </svg>
-  ),
-  StoneBase: () => (
-    <svg width="100" height="70" viewBox="0 0 100 70" className="drop-shadow-lg">
-      <path d="M 10 30 C 10 10, 90 10, 90 30 C 90 40, 85 65, 70 70 C 50 75, 30 75, 10 65 Z" fill="#8d8c8a" />
-      <path d="M 10 30 C 10 40, 30 50, 50 50 C 70 50, 90 40, 90 30 C 90 10, 10 10, 10 30 Z" fill="#a5a5a5" />
-      <ellipse cx="50" cy="27" rx="35" ry="12" fill="#c4c4c4" />
-    </svg>
-  )
-};
+// --- 2. MULTI-LAYER MASCOT ORNAMENT ---
+const BubulMascot: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={cn("relative flex items-center justify-center", className)}>
+    <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 via-emerald-300 to-white rounded-full animate-pulse blur-[1px]" />
+    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full border border-white/80 shadow-md flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-0.5 left-1 w-1/3 h-1/3 bg-white/40 rounded-full blur-[2px]" />
+      <div className="flex gap-1.5 mb-1">
+        <div className="w-2.5 h-2.5 bg-[#031466] rounded-full flex items-center justify-center relative">
+          <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
+        </div>
+        <div className="w-2.5 h-2.5 bg-[#031466] rounded-full flex items-center justify-center relative">
+          <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
+        </div>
+      </div>
+    </div>
+    <div className="absolute bottom-[20%] left-[20%] w-2 h-1 bg-pink-300/60 rounded-full" />
+    <div className="absolute bottom-[20%] right-[20%] w-2 h-1 bg-pink-300/60 rounded-full" />
+  </div>
+);
 
 // --- 3. MAIN COMPONENT ---
 const TesSimulasi: React.FC = () => {
-  const [currentLevel, setCurrentLevel] = useState(() => Number(localStorage.getItem('outbubble_level')) || 1);
-  const [activeStage, setActiveStage] = useState<'pre' | 'quiz' | 'post' | null>(null);
+  const { user, addXP, updateProfile } = useStore();
+  const currentLevel = user?.level || 1;
+
+  // Track currently selected biome (0 to 4). Defaults to user's biome zone.
+  const initialBiomeIndex = Math.min(4, Math.floor((currentLevel - 1) / 100));
+  const [activeBiomeIdx, setActiveBiomeIdx] = useState<number>(initialBiomeIndex);
+  
+  // Quiz play state
+  const [selectedPlayLevel, setSelectedPlayLevel] = useState<number | null>(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [isFinished, setIsFinished] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
-  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [isQuizFinished, setIsQuizFinished] = useState(false);
+
+  const activeBiome = BIOMES[activeBiomeIdx];
   const mapRef = useRef<HTMLDivElement>(null);
 
-  const questions = useMemo(() => 
-    activeStage ? Array.from({ length: 10 }, (_, i) => generateQuestion(currentLevel, i, activeStage)) : [],
-    [currentLevel, activeStage]
-  );
+  // Constants for map plotting (Inside each biome, 100 levels)
+  const LEVEL_COUNT_PER_BIOME = 100;
+  const NODE_SPACING = 180;
+  const MAP_HEIGHT = 580;
+  const AMPLITUDE = 140;
+  const MAP_WIDTH = LEVEL_COUNT_PER_BIOME * NODE_SPACING + 300;
 
-  const handleAnswer = (idx: number) => {
+  // Generate 3 unique questions tailored for the selected level
+  const questions = useMemo(() => {
+    if (!selectedPlayLevel) return [];
+    // We generate 3 questions per level to make it punchy, high-pace, and highly game-like.
+    return [
+      generateQuestion(selectedPlayLevel, 0, 'quiz'),
+      generateQuestion(selectedPlayLevel, 1, 'quiz'),
+      generateQuestion(selectedPlayLevel, 2, 'quiz')
+    ];
+  }, [selectedPlayLevel]);
+
+  // Total stars collected (3 stars for each completed level)
+  const totalStars = useMemo(() => {
+    return Math.max(0, (currentLevel - 1) * 3);
+  }, [currentLevel]);
+
+  // Generate dynamic lush decorative models based on current active biome
+  const sceneryDecorations = useMemo(() => {
+    const items: { x: number; y: number; label: string; sizeClass: string; animateClass?: string }[] = [];
+    const b = BIOMES[activeBiomeIdx];
+    const count = 100;
+    
+    // Scan through levels with high density intervals
+    for (let i = 0.5; i < count; i += 1.4) {
+      const x = i * NODE_SPACING + 150 + (Math.sin(i * 1.8) * 32);
+      const base_y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+      
+      // Placed alternately on the land bank above or below the center road
+      const isAbove = Math.round(i * 10) % 20 < 10;
+      const offset = isAbove ? -(85 + Math.abs(Math.sin(i * 2.5) * 45)) : (85 + Math.abs(Math.cos(i * 2.5) * 45));
+      const y = base_y + offset;
+      
+      const iconPool = b.sceneryIcons || ["🌳"];
+      const label = iconPool[Math.floor((i * 23) % iconPool.length)];
+      
+      let sizeClass = "text-xl sm:text-2xl";
+      let animateClass = "";
+      
+      if (["🏡", "🏰", "🏯", "🛖", "🌋", "🏛️", "🗼", "🌳", "🍎", "🐄"].includes(label)) {
+        sizeClass = "text-3xl sm:text-4xl filter drop-shadow-md";
+      }
+      
+      if (["🔥", "💫", "🫧", "🌟", "☄️"].includes(label)) {
+        animateClass = "animate-pulse";
+      }
+      
+      // Avoid overlaps with landmarks
+      const isOverlappingLandmark = b.landmarks.some(l => {
+        const dist = Math.sqrt(Math.pow(l.x - x, 2) + Math.pow(l.y - y, 2));
+        return dist < 125;
+      });
+      
+      if (!isOverlappingLandmark) {
+        items.push({ x, y, label, sizeClass, animateClass });
+      }
+    }
+    return items;
+  }, [activeBiomeIdx]);
+
+  // Scroll to active position on mount or biome changes
+  useEffect(() => {
+    if (mapRef.current) {
+      // Find where currentLevel lives relative to current biome
+      const levelOffset = currentLevel - (activeBiomeIdx * 100);
+      if (levelOffset >= 1 && levelOffset <= 100) {
+        const xPos = (levelOffset - 1) * NODE_SPACING + 150 - window.innerWidth / 2 + 100;
+        mapRef.current.scrollLeft = Math.max(0, xPos);
+      } else if (levelOffset < 1) {
+        // Scroll to beginning
+        mapRef.current.scrollLeft = 0;
+      } else {
+        // Scroll to end
+        mapRef.current.scrollLeft = MAP_WIDTH;
+      }
+    }
+  }, [activeBiomeIdx, currentLevel]);
+
+  // Adjust active biome when level changes to keep user focused
+  useEffect(() => {
+    const calculatedBiome = Math.min(4, Math.floor((currentLevel - 1) / 100));
+    setActiveBiomeIdx(calculatedBiome);
+  }, [currentLevel]);
+
+  // Option select handler
+  const handleAnswerSelect = (optionIdx: number) => {
     if (selectedAnswer !== null) return;
-    setSelectedAnswer(idx);
+    setSelectedAnswer(optionIdx);
     setShowExplanation(true);
-    if (idx === questions[currentQuestionIdx].correct) setCorrectAnswers(prev => prev + 1);
+    if (optionIdx === questions[currentQuestionIdx].correct) {
+      setCorrectAnswers(prev => prev + 1);
+    }
   };
 
-  const nextQuestion = () => {
-    if (currentQuestionIdx < 9) {
-      setCurrentQuestionIdx(p => p + 1);
+  // Next step handler during quiz
+  const handleNextStep = () => {
+    if (currentQuestionIdx < 2) {
+      setCurrentQuestionIdx(prev => prev + 1);
       setSelectedAnswer(null);
       setShowExplanation(false);
     } else {
-      setIsFinished(true);
-      if (correctAnswers >= 8 && activeStage === 'quiz') {
-        const nextLvl = currentLevel + 1;
-        setCurrentLevel(nextLvl);
-        localStorage.setItem('outbubble_level', nextLvl.toString());
+      setIsQuizFinished(true);
+      // Logic: if passed (>= 2 correct of 3 questions)
+      if (correctAnswers >= 2 && selectedPlayLevel) {
+        // Award XP and advance user level if they completed their highest reached level
+        const xpGained = correctAnswers * 20 + 40; // up to 100 XP
+        addXP(xpGained);
+        if (selectedPlayLevel === currentLevel) {
+          updateProfile({ level: Math.min(500, currentLevel + 1) });
+        }
+      } else {
+        addXP(correctAnswers * 5); // Consolation XP
       }
     }
   };
 
-  const getLevelColor = (level: number) => {
-    if (level > 400) return "from-red-500 to-orange-400";
-    if (level > 200) return "from-violet-500 to-fuchsia-500";
-    return "from-cyan-400 to-blue-500";
+  // Skip or reset state to play another node
+  const closeQuizModal = () => {
+    setSelectedPlayLevel(null);
+    setCurrentQuestionIdx(0);
+    setCorrectAnswers(0);
+    setSelectedAnswer(null);
+    setShowExplanation(false);
+    setIsQuizFinished(false);
   };
 
-  // MAP SETTINGS
-  const TOTAL_LEVELS = 500;
-  const NODE_SPACING = 250;
-  const MAP_WIDTH = TOTAL_LEVELS * NODE_SPACING + 400; 
-  const MAP_HEIGHT = 700;
-  const AMPLITUDE = 180;
-
-  useEffect(() => {
-    if (isMapExpanded && mapRef.current) {
-      const scrollPos = (currentLevel - 1) * NODE_SPACING - window.innerWidth / 2 + 150;
-      mapRef.current.scrollLeft = Math.max(0, scrollPos);
+  const handleLaunchLevel = (level: number) => {
+    if (level <= currentLevel) {
+      setSelectedPlayLevel(level);
+      setCurrentQuestionIdx(0);
+      setCorrectAnswers(0);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+      setIsQuizFinished(false);
     }
-  }, [isMapExpanded, currentLevel]);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 text-[#031466] p-4 sm:p-6 md:p-12 font-sans overflow-x-hidden flex flex-col">
-      
-      {/* HEADER STATS - RESPONSIVE */}
-      <div className="max-w-6xl mx-auto w-full bg-white/60 backdrop-blur-xl border border-white shadow-xl p-6 sm:p-8 rounded-[30px] sm:rounded-[40px] flex flex-col md:flex-row justify-between items-center gap-6 mb-8 md:mb-10 relative z-10">
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className={cn("w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-black shadow-lg text-white bg-gradient-to-br", getLevelColor(currentLevel))}>
-            {currentLevel}
-          </div>
-          <div>
-            <p className="text-[9px] sm:text-[10px] font-black tracking-widest text-slate-400 uppercase">Rank Progress</p>
-            <h2 className="text-xl sm:text-2xl font-black italic text-[#031466]">Level {currentLevel} Mastery</h2>
-          </div>
-        </div>
-        <div className="w-full md:w-64 space-y-2">
-          <div className="flex justify-between text-[9px] sm:text-[10px] font-black text-slate-500 uppercase">
-            <span>Progress Quiz</span>
-            <span className="text-blue-600 font-bold">{correctAnswers}/10 Benar</span>
-          </div>
-          <div className="h-2.5 sm:h-3 bg-blue-900/10 rounded-full overflow-hidden border border-white shadow-inner">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${(currentQuestionIdx + 1) * 10}%` }} className={cn("h-full bg-gradient-to-r", getLevelColor(currentLevel))} />
-          </div>
-        </div>
-      </div>
-
-      {/* STAGE SELECTOR */}
-      <div className="max-w-6xl mx-auto w-full flex-1 relative z-10">
-        {!activeStage ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {[
-              { id: 'pre', title: 'Pre-Test', icon: <Play />, desc: 'Diagnosis pengetahuan awal' },
-              { id: 'quiz', title: 'Level Quiz', icon: <BookOpen />, desc: `Tantangan untuk naik level` },
-              { id: 'post', title: 'Post-Test', icon: <FileCheck />, desc: 'Review pemahaman materi' }
-            ].map((mode) => (
-              <motion.button
-                key={mode.id}
-                whileHover={{ y: -10, backgroundColor: "rgba(255,255,255,1)" }}
-                onClick={() => { setActiveStage(mode.id as any); setIsFinished(false); setCurrentQuestionIdx(0); setCorrectAnswers(0); setSelectedAnswer(null); setShowExplanation(false); }}
-                className="p-8 sm:p-10 rounded-[35px] sm:rounded-[50px] bg-white/60 border border-white shadow-xl text-left relative overflow-hidden transition-colors"
-              >
-                <div className={cn("absolute top-0 left-0 w-2 h-full bg-gradient-to-b", getLevelColor(currentLevel))} />
-                <div className="text-blue-500 mb-4 sm:mb-6 scale-125 sm:scale-150 origin-left drop-shadow-sm">{mode.icon}</div>
-                <h3 className="text-2xl sm:text-3xl font-black italic mb-2 uppercase text-[#031466]">{mode.title}</h3>
-                <p className="text-slate-500 text-xs sm:text-sm font-medium">{mode.desc}</p>
-              </motion.button>
-            ))}
-          </div>
-        ) : (
-          /* QUIZ INTERFACE */
-          <AnimatePresence mode="wait">
-            {!isFinished ? (
-              <motion.div key="quiz" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto">
-                <div className="bg-white/80 backdrop-blur-3xl rounded-[40px] sm:rounded-[60px] border border-white p-6 sm:p-10 md:p-16 relative shadow-2xl">
-                  <div className="flex justify-between items-center mb-8 md:mb-10 text-[10px] sm:text-sm font-black text-blue-400 uppercase tracking-widest">
-                    <span>{activeStage.toUpperCase()} MODE</span>
-                    <span>SOAL {currentQuestionIdx + 1} / 10</span>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-center mb-8 md:mb-12 leading-tight text-[#031466]">{questions[currentQuestionIdx].q}</h3>
-                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                    {questions[currentQuestionIdx].options.map((opt, i) => (
-                      <button key={i} disabled={selectedAnswer !== null} onClick={() => handleAnswer(i)} className={cn("w-full p-4 sm:p-6 rounded-[20px] sm:rounded-[30px] border-2 text-left text-sm sm:text-base font-bold transition-all flex justify-between items-center", selectedAnswer === null ? "bg-white border-blue-100 hover:border-blue-400 hover:bg-blue-50 text-[#031466]" : i === questions[currentQuestionIdx].correct ? "bg-emerald-100 border-emerald-500 text-emerald-700 shadow-md" : i === selectedAnswer ? "bg-red-100 border-red-500 text-red-700" : "bg-white/50 text-slate-400 border-transparent")}>
-                        <span className="flex-1 pr-4">{opt}</span> {selectedAnswer !== null && i === questions[currentQuestionIdx].correct && <CheckCircle2 className="shrink-0" size={20}/>}
-                      </button>
-                    ))}
-                  </div>
-                  <AnimatePresence>
-                    {showExplanation && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-6 sm:mt-8 p-6 sm:p-8 bg-blue-50 rounded-[25px] sm:rounded-[35px] border border-blue-200 text-center shadow-inner">
-                        <div className="bg-blue-600 inline-block px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase text-white mb-4 tracking-widest shadow-md">Analisis Akademik</div>
-                        <p className="text-base sm:text-lg font-bold mb-6 italic text-blue-900 leading-relaxed">{questions[currentQuestionIdx].explanation}</p>
-                        <button onClick={nextQuestion} className="w-full py-3 sm:py-4 bg-[#031466] text-white rounded-[15px] sm:rounded-[20px] font-black flex items-center justify-center gap-2 shadow-lg hover:bg-blue-800 transition-colors">
-                          {currentQuestionIdx === 9 ? "CEK HASIL" : "LANJUT SOAL"} <ChevronRight />
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center bg-white/80 rounded-[40px] sm:rounded-[60px] p-10 sm:p-20 border border-white backdrop-blur-xl max-w-2xl mx-auto shadow-2xl">
-                <div className={cn("w-32 h-32 sm:w-48 sm:h-48 rounded-full flex flex-col items-center justify-center mx-auto border-[8px] sm:border-[10px] mb-8 bg-white shadow-xl", correctAnswers >= 8 ? "border-emerald-400 text-emerald-500" : "border-red-400 text-red-500")}>
-                  <span className="text-5xl sm:text-7xl font-black">{correctAnswers * 10}</span>
-                </div>
-                <h2 className="text-2xl sm:text-4xl font-black italic mb-8 sm:mb-10 text-[#031466] uppercase tracking-tighter">{correctAnswers >= 8 ? "LEVEL BERHASIL DILEWATI!" : "BUTUH BELAJAR LAGI"}</h2>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <button onClick={() => setActiveStage(null)} className="px-8 py-4 rounded-full bg-white border border-slate-200 font-black text-[#031466] uppercase text-[10px] sm:text-xs hover:bg-slate-50">Menu Utama</button>
-                  <button onClick={() => { setIsFinished(false); setCurrentQuestionIdx(0); setCorrectAnswers(0); setSelectedAnswer(null); setShowExplanation(false); }} className={cn("px-8 py-4 rounded-full font-black text-white shadow-xl uppercase text-[10px] sm:text-xs", getLevelColor(currentLevel))}>
-                    {correctAnswers >= 8 ? "Lanjut Level" : "Coba Ulang"}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
-
-        {/* ROADMAP TRIGGER */}
-        {!activeStage && (
-          <motion.div whileHover={{ scale: 1.01 }} onClick={() => setIsMapExpanded(true)} className="mt-8 sm:mt-16 bg-gradient-to-r from-orange-400 to-amber-300 rounded-[35px] sm:rounded-[50px] p-6 sm:p-10 cursor-pointer shadow-2xl border-4 border-white flex items-center justify-between">
-            <div className="text-[#031466]">
-              <h3 className="text-2xl sm:text-4xl font-black italic mb-1 sm:mb-2 tracking-tighter uppercase">Peta Perjalanan</h3>
-              <p className="text-xs sm:text-base font-bold flex items-center gap-2"><Map size={18}/> Lihat progres kamu di 500 Level</p>
-            </div>
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/40 rounded-full flex items-center justify-center animate-bounce shadow-inner">
-              <Sparkles className="text-[#031466]" size={36}/>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* ================= MODAL PETA 500 LEVEL ================= */}
-      <AnimatePresence>
-        {isMapExpanded && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 md:p-8">
-            <div className="absolute inset-0 bg-[#031466]/80 backdrop-blur-md" onClick={() => setIsMapExpanded(false)} />
-            <div className="w-full h-full bg-[#8bc34a] sm:rounded-[60px] border-0 sm:border-[10px] border-white shadow-2xl relative overflow-hidden flex flex-col">
-              <div className="p-6 sm:p-8 relative z-50 flex justify-between items-center bg-white/70 backdrop-blur-xl border-b-4 border-white shadow-sm text-[#031466]">
-                <h2 className="text-lg sm:text-3xl font-black italic flex items-center gap-2 sm:gap-3"><Map className="w-5 h-5 sm:w-8 sm:h-8" /> DESA BUBUL: 500 LEVELS</h2>
-                <button onClick={() => setIsMapExpanded(false)} className="p-2 sm:p-3 bg-red-500 text-white rounded-full border-2 border-white shadow-lg hover:scale-110 transition-all"><X size={24} /></button>
+    <div className={cn("min-h-screen text-[#031466] font-sans overflow-x-hidden flex flex-col pb-8 transition-colors duration-500", activeBiome.bgGradient)}>
+      {/* HEADER HUD / ADVENTURE METRICS */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-6">
+        <div className="bg-white/90 backdrop-blur-2xl border-2 border-white shadow-lg p-5 rounded-[28px] flex flex-col lg:flex-row justify-between items-center gap-4 relative z-20">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-700 font-black text-white text-xl flex items-center justify-center shadow-md">
+                {currentLevel}
               </div>
-              <div ref={mapRef} className="flex-1 overflow-auto relative z-10 hide-scrollbar cursor-grab active:cursor-grabbing bg-[#aed581]">
-                <div className="relative" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }}>
-                  <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
-                    <path d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: TOTAL_LEVELS }).map((_, i) => `L ${i * NODE_SPACING + 150},${MAP_HEIGHT / 2 + Math.sin(i * 0.6) * AMPLITUDE}`).join(" ")}`} fill="none" stroke="#92400e" strokeWidth="60" strokeLinecap="round" opacity="0.3" />
-                    <path d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: TOTAL_LEVELS }).map((_, i) => `L ${i * NODE_SPACING + 150},${MAP_HEIGHT / 2 + Math.sin(i * 0.6) * AMPLITUDE}`).join(" ")}`} fill="none" stroke="#fcd34d" strokeWidth="15" strokeLinecap="round" strokeDasharray="20 20" />
-                  </svg>
-                  {Array.from({ length: TOTAL_LEVELS }).map((_, i) => {
-                    const level = i + 1;
-                    const xPos = i * NODE_SPACING + 150; 
-                    const yPos = MAP_HEIGHT / 2 + Math.sin(i * 0.6) * AMPLITUDE;
-                    const isReached = currentLevel >= level;
-                    const isCurrent = currentLevel === level;
-                    return (
-                      <div key={level} className="absolute z-30" style={{ left: xPos, top: yPos, transform: 'translate(-50%, -50%)' }}>
-                        <div className="relative flex flex-col items-center">
-                          {currentLevel > level && (
-                            <div className="absolute -top-12 flex gap-1 justify-center w-20">
-                              <Assets.SolidStar className="w-5 h-5 drop-shadow-md" />
-                              <Assets.SolidStar className="w-5 h-5 drop-shadow-md" />
+              <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[9px] font-black uppercase text-amber-950 px-1.5 py-0.5 rounded-full shadow border border-white flex items-center gap-0.5">
+                <Compass className="w-2.5 h-2.5 animate-spin duration-3000" /> LVL
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black italic tracking-tight text-[#031466] uppercase">Ksatria OutBubble</h1>
+                <span className="bg-amber-100 border border-amber-300 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Penyelamat Desa</span>
+              </div>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">Berpetualang melintasi <strong className="text-indigo-650">500 Gelembung Informasi</strong></p>
+            </div>
+          </div>
+
+          {/* TOTAL ADVENTURE STATS */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-3 py-1.5 sm:px-6 flex flex-col justify-center shadow-inner">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Bintang Desa</span>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <Star className="w-4 h-4 text-yellow-500 fill-yellow-400 font-black" />
+                <span className="font-extrabold text-xs sm:text-sm">{totalStars} ✨</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-3 py-1.5 sm:px-6 flex flex-col justify-center shadow-inner">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Level Unlocked</span>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <Trophy className="w-4 h-4 text-amber-600 font-black" />
+                <span className="font-extrabold text-xs sm:text-sm text-amber-800">{currentLevel} / 500</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-3 py-1.5 sm:px-6 flex flex-col justify-center shadow-inner">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total XP Rasa</span>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <Coins className="w-4 h-4 text-emerald-500 font-bold" />
+                <span className="font-extrabold text-xs sm:text-sm text-emerald-700">{user?.xp || 0} XP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* BIOME TELEPORTER (FAST TRAVEL MAP) */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 mt-4 z-20">
+        <div className="bg-slate-900/10 backdrop-blur-xl p-1.5 rounded-3xl grid grid-cols-2 md:grid-cols-5 gap-1 shadow-inner border border-white/25">
+          {BIOMES.map((b, idx) => {
+            const isSelected = activeBiomeIdx === idx;
+            const isUnlocked = currentLevel >= idx * 100 + 1;
+            return (
+              <button
+                key={idx}
+                onClick={() => setActiveBiomeIdx(idx)}
+                className={cn(
+                  "py-2 sm:py-3 px-3 rounded-2xl text-[11px] font-black uppercase tracking-tight transition-all duration-350 flex items-center justify-center gap-1.5 border relative overflow-hidden active:scale-95",
+                  isSelected
+                    ? "bg-gradient-to-br from-[#031466] to-indigo-850 text-white shadow-lg border-transparent scale-102"
+                    : "bg-white/65 hover:bg-white text-slate-700 border-slate-200"
+                )}
+              >
+                <span className={cn(isSelected ? "text-yellow-400" : "text-slate-400")}>{b.icon}</span>
+                <span className="text-center truncate">{b.name.split(" ")[0]}</span>
+                {!isUnlocked && (
+                  <Lock className="w-3 h-3 text-red-505 absolute top-1 right-1 opacity-60" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* IMMERSIVE MAP DESCRIPTION CARD */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 mt-3 z-10">
+        <div className="bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-slate-700">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-xs text-[#031466] uppercase bg-slate-150 px-2 py-0.5 rounded-lg border border-slate-200/50">
+                Peta Desa Bubul
+              </span>
+              <p className="font-bold text-xs uppercase tracking-wider text-slate-400">{activeBiome.subTitle}</p>
+            </div>
+            <h2 className="text-sm font-extrabold text-[#031466] mt-1">{activeBiome.name}: <span className="font-medium text-slate-600">{activeBiome.description}</span></h2>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black bg-blue-50/70 border border-blue-200/50 text-[#031466] px-3 py-1.5 rounded-full shadow-inner self-stretch md:self-auto justify-center">
+            <HelpCircle className="w-3.5 h-3.5 shrink-0" /> Pecahkan Gelembung dengan Klik Node Hijau/Biru!
+          </div>
+        </div>
+      </div>
+
+      {/* THE IMMERSIVE ROAD MAP VIEWPORT */}
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 mt-4 relative z-10 flex flex-col">
+        <div className={cn(
+          "border-[3px] border-white shadow-2xl rounded-[40px] overflow-hidden flex-1 relative flex flex-col min-h-[440px] transition-all duration-1000",
+          activeBiome.bgGradient
+        )}>
+          
+          {/* COMPASS ROSE VISUAL */}
+          <div className="absolute top-4 left-4 z-45 bg-white/75 backdrop-blur-md rounded-2xl p-2 border border-slate-200/40 shadow-md flex items-center gap-2 pointer-events-none select-none">
+            <motion.div 
+              animate={{ rotate: 360 }} 
+              transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+              className="relative flex items-center justify-center w-8 h-8 rounded-full border border-slate-300"
+            >
+              <div className="absolute top-0.5 text-[6px] font-black text-red-650">N</div>
+              <div className="absolute bottom-0.5 text-[6px] font-black text-slate-700">S</div>
+              <div className="w-1 h-6 bg-gradient-to-b from-red-500 via-white to-indigo-900 rounded-full" />
+            </motion.div>
+            <div className="flex flex-col">
+              <span className="text-[7px] font-black text-slate-400 tracking-wider">NAVIGATOR</span>
+              <span className="text-[10px] font-black text-[#031466] leading-none uppercase">{activeBiome.name.split(" ")[0]}</span>
+            </div>
+          </div>
+
+          {/* BACKGROUND SCENERY OVERLAYS */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+            {/* Scenic backdrop color based on active biome */}
+            <div className="absolute inset-0 bg-blue-100/5 mix-blend-multiply" />
+            
+            {/* Floating Clouds Animation */}
+            <motion.div 
+              animate={{ x: [-120, window.innerWidth + 250] }} 
+              transition={{ repeat: Infinity, duration: 32, ease: "linear" }}
+              className="absolute top-8 left-0 text-7xl select-none opacity-20 filter blur-[1px]"
+            >
+              ☁️
+            </motion.div>
+            <motion.div 
+              animate={{ x: [window.innerWidth + 250, -120] }} 
+              transition={{ repeat: Infinity, duration: 45, ease: "linear" }}
+              className="absolute top-24 right-0 text-8xl select-none opacity-15 filter blur-[2px]"
+            >
+              ☁️
+            </motion.div>
+            <motion.div 
+              animate={{ y: [0, -15, 0] }}
+              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+              className="absolute bottom-16 right-16 text-6xl select-none opacity-25"
+            >
+              🫧
+            </motion.div>
+          </div>
+
+          {/* SCROLLABLE PATH BOARD */}
+          <div 
+            ref={mapRef} 
+            className="flex-1 overflow-x-auto overflow-y-hidden relative z-10 scrollbar-thin select-none py-6 cursor-grab active:cursor-grabbing"
+            style={{ scrollBehavior: 'smooth' }}
+          >
+            <div className="relative animate-fadeIn duration-1000" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }}>
+              
+              {/* THE GEOMETRIC ADVENTURE COBBLESTONE WINDING ROAD */}
+              <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
+                <defs>
+                  <linearGradient id="island-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor={activeBiome.islandGradientStart} />
+                    <stop offset="100%" stopColor={activeBiome.islandGradientEnd} />
+                  </linearGradient>
+                  <linearGradient id="road-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor={activeBiome.roadColor === '#212121' ? '#333333' : '#4e342e'} />
+                    <stop offset="50%" stopColor={activeBiome.roadColor} />
+                    <stop offset="100%" stopColor={activeBiome.roadColor === '#212121' ? '#111111' : '#3e2723'} />
+                  </linearGradient>
+                </defs>
+
+                {/* ISLAND SEA FOAM RIPPLE (OUTERMOST FOAM) */}
+                <path 
+                  d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                    const x = i * NODE_SPACING + 150;
+                    const y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                    return `L ${x},${y}`;
+                  }).join(" ")}`} 
+                  fill="none" 
+                  stroke={activeBiome.rippleColor} 
+                  strokeWidth="380" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  opacity="0.35" 
+                />
+
+                {/* ISLAND SAND SHORELINE (MIDDLE BEACH) */}
+                <path 
+                  d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                    const x = i * NODE_SPACING + 150;
+                    const y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                    return `L ${x},${y}`;
+                  }).join(" ")}`} 
+                  fill="none" 
+                  stroke={activeBiome.shoreColor} 
+                  strokeWidth="350" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  opacity="0.95" 
+                />
+
+                {/* ISLAND LAND MASS BODY (INNER LAND GRASS/ROCK) */}
+                <path 
+                  d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                    const x = i * NODE_SPACING + 150;
+                    const y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                    return `L ${x},${y}`;
+                  }).join(" ")}`} 
+                  fill="none" 
+                  stroke="url(#island-grad)" 
+                  strokeWidth="315" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+
+                {/* MAIN COBBLESTONE WINDING ROAD SHADOW */}
+                <path 
+                  d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                    const x = i * NODE_SPACING + 150;
+                    const y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                    return `L ${x},${y}`;
+                  }).join(" ")}`} 
+                  fill="none" 
+                  stroke="#111111" 
+                  strokeWidth="42" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  opacity="0.15" 
+                />
+
+                {/* COBBLESTONE ROAD MAIN LANE */}
+                <path 
+                  d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                    const x = i * NODE_SPACING + 150;
+                    const y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                    return `L ${x},${y}`;
+                  }).join(" ")}`} 
+                  fill="none" 
+                  stroke="url(#road-grad)" 
+                  strokeWidth="28" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+
+                {/* Dashed Center Adventure Trail */}
+                <path 
+                  d={`M 150,${MAP_HEIGHT / 2} ${Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                    const x = i * NODE_SPACING + 150;
+                    const y = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                    return `L ${x},${y}`;
+                  }).join(" ")}`} 
+                  fill="none" 
+                  stroke={activeBiome.roadCenterColor} 
+                  strokeWidth="4" 
+                  strokeLinecap="round" 
+                  strokeDasharray="12 16" 
+                  opacity="0.9"
+                />
+              </svg>
+
+              {/* RENDER DYNAMIC ANIMATED SEA ORNAMENTS IN THE OCEAN */}
+              {activeBiome.seaOrnaments && activeBiome.seaOrnaments.map((o, idx) => (
+                <motion.div
+                  key={`sea-ornament-${idx}`}
+                  style={{ left: o.x, top: o.y, transform: 'translate(-50%, -50%)' }}
+                  animate={{ 
+                    y: [o.y - 6, o.y + 6, o.y - 6],
+                    rotate: [-2, 2, -2]
+                  }}
+                  transition={{ repeat: Infinity, duration: 5 + (idx % 3), ease: "easeInOut" }}
+                  className={cn("absolute text-5xl select-none pointer-events-none drop-shadow-md z-5 filter hover:scale-115 transition-transform", o.animate || "")}
+                >
+                  {o.icon}
+                </motion.div>
+              ))}
+
+              {/* RENDER BEAUTIFUL LUSH SCENERY DECORATIONS SCATTERED ACROSS THE ISLAND */}
+              {sceneryDecorations.map((scenery, idx) => (
+                <motion.div 
+                  key={`scenery-${idx}`}
+                  style={{ left: scenery.x, top: scenery.y }}
+                  animate={scenery.animateClass ? { scale: [1, 1.08, 1], rotate: [-2, 2, -2] } : { y: [0, -2, 0] }}
+                  transition={{ repeat: Infinity, duration: 4 + (idx % 3), ease: "easeInOut" }}
+                  className={cn(
+                    "absolute z-12 select-none pointer-events-none transform -translate-x-1/2 -translate-y-1/2 cursor-default transition-all duration-305",
+                    scenery.sizeClass
+                  )}
+                >
+                  {scenery.label}
+                </motion.div>
+              ))}
+
+              {/* RENDER BEAUTIFUL VIBRANT LANDMARKS */}
+              {activeBiome.landmarks.map((landmark, idx) => (
+                <div 
+                  key={`landmark-${idx}`} 
+                  className="absolute z-15 flex flex-col items-center pointer-events-none filter drop-shadow-lg"
+                  style={{ left: landmark.x, top: landmark.y - 70, transform: 'translate(-50%, -50%)' }}
+                >
+                  <div className="text-5xl animate-bounce duration-5000">{landmark.icon}</div>
+                  <div className="bg-slate-900/90 text-[10px] font-black tracking-tight text-white border border-white/25 px-2.5 py-1 rounded-full whitespace-nowrap mt-1 uppercase">
+                    {landmark.label}
+                  </div>
+                </div>
+              ))}
+
+              {/* RENDER LEVEL NODES */}
+              {Array.from({ length: LEVEL_COUNT_PER_BIOME }).map((_, i) => {
+                const biomeStartLevel = (activeBiomeIdx * 100) + 1;
+                const level = biomeStartLevel + i;
+                
+                const xPos = i * NODE_SPACING + 150; 
+                const yPos = MAP_HEIGHT / 2 + Math.sin(i * 0.7) * AMPLITUDE;
+                
+                const isReached = currentLevel >= level;
+                const isCurrent = currentLevel === level;
+                const isLocked = !isReached;
+
+                return (
+                  <div 
+                    key={level} 
+                    className="absolute z-30" 
+                    style={{ left: xPos, top: yPos, transform: 'translate(-50%, -50%)' }}
+                  >
+                    <div className="relative flex flex-col items-center">
+                      
+                      {/* Completed Stars Indicator */}
+                      {isReached && !isCurrent && (
+                        <div className="absolute -top-7 flex gap-0.5 justify-center w-20 pointer-events-none drop-shadow-md">
+                          <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-400 font-bold" />
+                          <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-400 font-bold" />
+                          <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-400 font-bold" />
+                        </div>
+                      )}
+
+                      {/* Clickable Node */}
+                      <motion.button 
+                        whileHover={!isLocked ? { scale: 1.15 } : {}}
+                        whileTap={!isLocked ? { scale: 0.92 } : {}}
+                        onClick={() => handleLaunchLevel(level)}
+                        className={cn(
+                          "w-14 h-14 rounded-full border-4 flex items-center justify-center font-black relative shadow-lg transition-all duration-300",
+                          isCurrent 
+                            ? "bg-gradient-to-tr from-yellow-400 via-amber-300 to-white text-slate-900 border-white ring-4 ring-[#031466]/40 text-lg sm:text-xl h-18 w-18 z-20 animate-pulse duration-1000" 
+                            : isReached 
+                              ? "bg-gradient-to-tr from-blue-500 to-indigo-600 text-white border-white text-base" 
+                              : "bg-[#808b96]/80 text-slate-500 border-slate-350 cursor-not-allowed opacity-80"
+                        )}
+                      >
+                        {isLocked ? (
+                          <Lock className="w-4 h-4 text-slate-400" />
+                        ) : (
+                          level
+                        )}
+                        
+                        {/* Interactive Sparkle Effect on Current Flag */}
+                        {isCurrent && (
+                          <span className="absolute -top-1.5 -right-1 z-30 bg-[#031466] text-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase border border-white whitespace-nowrap tracking-tighter flex items-center gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5 text-yellow-500 animate-pulse" /> MAIN
+                          </span>
+                        )}
+                      </motion.button>
+
+                      {/* Little Bubul mascot sitting on top of current position */}
+                      {isCurrent && (
+                        <motion.div 
+                          animate={{ y: [0, -7, 0] }} 
+                          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} 
+                          className="absolute -top-16 pointer-events-none z-40 flex flex-col items-center"
+                        >
+                          <div className="bg-slate-900/90 text-[8px] font-bold text-white px-2 py-0.5 rounded-md shadow border border-white/20 mb-1 tracking-tight">Kamu di sini</div>
+                          <BubulMascot className="w-8 h-8 drop-shadow-xl" />
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- 4. PRETTIFIED INTEGRATED QUIZ DIALOG / MODAL PANEL --- */}
+      <AnimatePresence>
+        {selectedPlayLevel && questions.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-[#031466]/70"
+          >
+            {/* Backdrop Closer */}
+            <div className="absolute inset-0" onClick={closeQuizModal} />
+
+            {/* Immersive Adventure Quest Book Box */}
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 350, damping: 24 }}
+              className="bg-white rounded-[32px] sm:rounded-[40px] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] border-4 border-slate-100 max-w-2xl w-full relative z-10 overflow-hidden flex flex-col text-[#031466]"
+            >
+              
+              {/* Card Header Info */}
+              <div className="bg-gradient-to-r from-[#031466] to-indigo-850 p-6 text-white flex justify-between items-center relative border-b-4 border-yellow-405">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-xl shadow-inner border border-white/10">
+                    🏹
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base sm:text-lg italic tracking-tight uppercase flex items-center gap-1.5">
+                      Tantangan Level {selectedPlayLevel}
+                    </h3>
+                    <p className="text-[10px] text-yellow-300 font-black uppercase tracking-wider">{activeBiome.name}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={closeQuizModal}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 transition-all rounded-full text-white/80 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Main Dialog Viewports */}
+              <div className="p-6 sm:p-8 flex-1 overflow-y-auto">
+                <AnimatePresence mode="wait">
+                  {!isQuizFinished ? (
+                    <motion.div 
+                      key={`q-${currentQuestionIdx}`} 
+                      initial={{ opacity: 0, x: 20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                      {/* Step trackers */}
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                        <span>SOAL {currentQuestionIdx + 1} DARI 3</span>
+                        <span className="text-indigo-650 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> {correctAnswers} Benar
+                        </span>
+                      </div>
+
+                      {/* Rich Progress Bar */}
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-100 shadow-inner">
+                        <div 
+                          className="h-full bg-gradient-to-r from-[#031466] to-indigo-600 transition-all duration-300" 
+                          style={{ width: `${((currentQuestionIdx + 1) / 3) * 100}%` }}
+                        />
+                      </div>
+
+                      {/* Question Text */}
+                      <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl text-center shadow-inner relative overflow-hidden">
+                        <div className="absolute top-1 left-2 text-3xl opacity-10 font-serif select-none">“</div>
+                        <p className="text-sm sm:text-base font-extrabold text-slate-800 leading-relaxed text-center">
+                          {questions[currentQuestionIdx]?.q}
+                        </p>
+                      </div>
+
+                      {/* Multi-choice options */}
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {questions[currentQuestionIdx]?.options.map((opt, optionIdx) => {
+                          const isAnswered = selectedAnswer !== null;
+                          const isCorrectOpt = optionIdx === questions[currentQuestionIdx].correct;
+                          const isSelectedOpt = optionIdx === selectedAnswer;
+
+                          return (
+                            <button
+                              key={optionIdx}
+                              disabled={isAnswered}
+                              onClick={() => handleAnswerSelect(optionIdx)}
+                              className={cn(
+                                "w-full p-4.5 rounded-2xl border-2 text-left text-xs sm:text-sm font-extrabold flex justify-between items-center transition-all",
+                                !isAnswered 
+                                  ? "bg-white border-slate-200/80 hover:border-indigo-600 hover:bg-indigo-50/40 text-slate-700 active:scale-99" 
+                                  : isCorrectOpt
+                                    ? "bg-emerald-50 border-emerald-500 text-emerald-800 shadow-inner"
+                                    : isSelectedOpt
+                                      ? "bg-rose-50 border-rose-500 text-rose-800"
+                                      : "bg-white/45 text-slate-400 border-slate-100"
+                              )}
+                            >
+                              <span className="pr-4">{opt}</span>
+                              {isAnswered && isCorrectOpt && (
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                              )}
+                              {isAnswered && isSelectedOpt && !isCorrectOpt && (
+                                <X className="w-5 h-5 text-rose-600 shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Live academia feedback explanation */}
+                      {showExplanation && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }} 
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="p-5 bg-indigo-50 border border-indigo-100 rounded-2xl flex gap-3 text-slate-700 mt-2"
+                        >
+                          <BubulMascot className="w-10 h-10 shrink-0 drop-shadow shadow-white z-0 mt-0.5" />
+                          <div>
+                            <span className="bg-[#031466] text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-md shadow tracking-wider">
+                              Reasoning Bubul
+                            </span>
+                            <p className="text-xs sm:text-sm font-semibold text-[#031466] mt-1.5 leading-relaxed italic">
+                              "{questions[currentQuestionIdx]?.explanation}"
+                            </p>
+                            <button
+                              onClick={handleNextStep}
+                              className="mt-3 bg-[#031466] hover:bg-indigo-850 text-white font-black text-[11px] px-4 py-2 rounded-xl shadow flex items-center gap-1"
+                            >
+                              {currentQuestionIdx < 2 ? "Lanjut Soal" : "Lihat Hasil"} <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  ) : (
+                    /* VICTORY LEVEL UPS AND FEEDBACKS */
+                    <motion.div 
+                      initial={{ scale: 0.95 }} 
+                      animate={{ scale: 1 }}
+                      className="text-center py-6 flex flex-col items-center space-y-5"
+                    >
+                      {correctAnswers >= 2 ? (
+                        <>
+                          {/* PASS ANIMATIONS */}
+                          <div className="w-24 h-24 bg-emerald-100 border-4 border-emerald-400 rounded-full flex flex-col items-center justify-center animate-bounce shadow-lg">
+                            <Star className="w-12 h-12 text-yellow-500 fill-yellow-400 font-extrabold" />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="bg-yellow-100 border border-yellow-300 text-amber-800 text-[10px] font-black px-3 py-1 rounded-full uppercase">
+                              Level Berhasil Dilewati! ⭐⭐⭐
+                            </span>
+                            <h2 className="text-xl sm:text-2xl font-black italic mt-2 uppercase text-[#031466] tracking-tighter">
+                              Bubul Menyala Abangku! 🫧
+                            </h2>
+                            <p className="text-slate-500 text-xs font-semibold max-w-sm mx-auto leading-relaxed">
+                              Kamu membuktikan ketangkasan logika menembus gelembung algoritma di Level {selectedPlayLevel}!
+                            </p>
+                          </div>
+                          
+                          {/* Gain Rewards cards */}
+                          <div className="bg-[#f8faff] border border-blue-100 p-4 rounded-2xl w-full max-w-xs grid grid-cols-2 gap-2 text-center shadow-inner">
+                            <div className="flex flex-col items-center justify-center border-r border-slate-100">
+                              <span className="text-[9px] font-black uppercase text-slate-400">XP Diperoleh</span>
+                              <span className="text-sm font-black text-emerald-600">+{correctAnswers * 20 + 40} XP 🪙</span>
                             </div>
-                          )}
-                          <div className={cn("relative transition-all duration-500", isReached ? "scale-100" : "scale-90 opacity-60")}>
-                            <Assets.StoneBase />
-                            <div className="absolute inset-0 flex items-center justify-center pt-2 font-black text-xl sm:text-2xl text-slate-700">
-                              {isReached ? level : <Lock size={20} className="opacity-50" />}
+                            <div className="flex flex-col items-center justify-center">
+                              <span className="text-[9px] font-black uppercase text-slate-400">Score Kita</span>
+                              <span className="text-sm font-black text-indigo-700">{correctAnswers} / 3 Benar</span>
                             </div>
                           </div>
-                          {isCurrent && (
-                            <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="absolute bottom-16 flex flex-col items-center">
-                               <div className="bg-blue-500 text-white text-[8px] sm:text-[10px] font-black px-2 sm:px-3 py-1 rounded-full shadow-lg border-2 border-white mb-2 uppercase tracking-tighter whitespace-nowrap">Posisi Kamu</div>
-                               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full border-4 border-blue-400 shadow-xl flex items-center justify-center text-3xl sm:text-4xl">🫧</div>
-                            </motion.div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+
+                          <div className="flex gap-3 justify-center w-full max-w-sm mt-2">
+                            <button 
+                              onClick={closeQuizModal}
+                              className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#031466] font-black uppercase text-[10px] rounded-xl"
+                            >
+                              Kembali ke Peta
+                            </button>
+                            
+                            {selectedPlayLevel === currentLevel && currentLevel < 500 && (
+                              <button 
+                                onClick={() => {
+                                  // Advance immediately to next level in modal
+                                  const nextLvl = currentLevel + 1;
+                                  setSelectedPlayLevel(nextLvl);
+                                  setCurrentQuestionIdx(0);
+                                  setCorrectAnswers(0);
+                                  setSelectedAnswer(null);
+                                  setShowExplanation(false);
+                                  setIsQuizFinished(false);
+                                }}
+                                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-650 text-white font-black uppercase text-[10px] rounded-xl shadow-md"
+                              >
+                                Lanjut Lvl {currentLevel + 1}
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        /* REPLAY / RETRY FEEDBACKS */
+                        <>
+                          <div className="w-24 h-24 bg-rose-100 border-4 border-rose-400 rounded-full flex flex-col items-center justify-center shadow-lg">
+                            <AlertCircle className="w-12 h-12 text-rose-500" />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-black px-3 py-1 rounded-full uppercase">
+                              Butuh Belajar Lagi 📚
+                            </span>
+                            <h2 className="text-xl sm:text-2xl font-black italic mt-2 uppercase text-rose-950 tracking-tighter">
+                              Aduh, Gelembung Masih Kuat!
+                            </h2>
+                            <p className="text-slate-500 text-xs font-semibold max-w-sm mx-auto leading-relaxed">
+                              Kamu butuh menjawab minimal 2 soal dengan benar untuk menetralisir level ini. Yuk, coba ulang atau baca petunjuk materi!
+                            </p>
+                          </div>
+
+                          <div className="flex gap-3 justify-center w-full max-w-sm mt-3">
+                            <button 
+                              onClick={closeQuizModal}
+                              className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#031466] font-black uppercase text-[10px] rounded-xl"
+                            >
+                              Peta Perjalanan
+                            </button>
+                            
+                            <button 
+                              onClick={() => {
+                                // Try again
+                                setCurrentQuestionIdx(0);
+                                setCorrectAnswers(0);
+                                setSelectedAnswer(null);
+                                setShowExplanation(false);
+                                setIsQuizFinished(false);
+                              }}
+                              className="flex-1 py-3 bg-[#031466] hover:bg-indigo-850 text-white font-black uppercase text-[10px] rounded-xl shadow-md"
+                            >
+                              Main Ulang
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </div>
+
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

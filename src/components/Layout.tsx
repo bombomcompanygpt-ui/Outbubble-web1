@@ -25,14 +25,20 @@ import BubulChat from './BubulChat';
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showChat, setShowChat] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
   const { user } = useStore();
 
-  const isLoginPage = location.pathname === '/login';
-
-  if (isLoginPage) {
-    return <div className="min-h-screen bg-[#f8faff]">{children}</div>;
-  }
+  // Detect screen size for responsiveness in Layout
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) setSidebarOpen(false);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f8faff] flex">
@@ -41,15 +47,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Main Content */}
       <motion.main 
         layout
-        animate={{ marginLeft: sidebarOpen ? 280 : 80 }}
+        animate={{ 
+          marginLeft: isMobile ? 0 : (sidebarOpen ? 280 : 88),
+          paddingLeft: isMobile ? 0 : 0
+        }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="flex-1 min-h-screen relative"
+        className="flex-1 min-h-screen relative overflow-x-hidden"
       >
         {/* Floating Chatbot Bubul Toggle */}
-        <div className="fixed bottom-8 right-28 z-50">
+        <div className="fixed bottom-8 right-8 z-50">
           <button 
             onClick={() => setShowChat(!showChat)}
-            className="w-16 h-16 bg-[#031466] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform group relative"
+            className="w-16 h-16 bg-[#031466] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform group relative border-2 border-white/20"
           >
             {showChat ? <X size={28} /> : <MessageSquare size={28} />}
             <span className="absolute right-full mr-4 bg-white text-[#031466] px-4 py-2 rounded-2xl shadow-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-[#b8c9ff]/30">

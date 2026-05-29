@@ -28,7 +28,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, setUser } = useStore();
+  const { user } = useStore();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -53,13 +53,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
     { name: 'Refleksi', path: '/refleksi', icon: PenTool },
     { name: 'Diskusi', path: '/forum', icon: MessageCircle },
     { name: 'Insight Sosial', path: '/insight', icon: TrendingUp },
-    { name: 'Profile', path: '/profile', icon: UserIcon },
+    { name: 'Status Saya', path: '/profile', icon: UserIcon },
   ];
-
-  const handleLogout = () => {
-    setUser(null);
-    navigate('/login');
-  };
 
   const handleMenuClick = () => {
     if (isMobile) setIsOpen(false);
@@ -153,40 +148,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
           })}
         </nav>
 
-        {/* FOOTER - PERBAIKAN LOGIKA LEVEL 1 (L1) */}
+        {/* FOOTER - LEVEL & XP PROGRESS */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          {user ? (
-            <>
-              <div className={cn(
-                "bg-white border border-slate-200 p-4 rounded-[22px] shadow-sm flex items-center",
-                !isOpen && !isMobile ? "justify-center" : "gap-3"
-              )}>
-                {(isOpen || isMobile) ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-hidden">
-                    <p className="text-sm font-black text-[#031466] truncate uppercase">{user.username}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 rounded-md bg-[#031466] text-[8px] text-white font-black uppercase">Lvl {user.level}</span>
-                      <span className="text-[10px] font-bold text-slate-400">{user.xp} XP</span>
-                    </div>
-                  </motion.div>
-                ) : (
-                  /* INI CODE YANG TADI HILANG: Menampilkan Level saat sidebar mengecil */
-                  <div className="w-10 h-10 bg-[#031466] rounded-xl flex items-center justify-center text-white text-[10px] font-black shadow-md">
-                    L{user.level}
-                  </div>
-                )}
+          <div className={cn(
+            "bg-white border border-slate-200 p-4 rounded-[22px] shadow-sm flex items-center",
+            !isOpen && !isMobile ? "justify-center" : "gap-3"
+          )}>
+            {(isOpen || isMobile) ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-hidden">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status Belajar</p>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-[#031466] text-[8px] text-white font-black uppercase">Lvl {user?.level || 1}</span>
+                  <span className="text-[10px] font-bold text-[#031466]">{user?.xp || 0} XP</span>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="w-10 h-10 bg-[#031466] rounded-xl flex items-center justify-center text-white text-[10px] font-black shadow-md">
+                L{user?.level || 1}
               </div>
-              <button onClick={() => { handleMenuClick(); handleLogout(); }} className={cn("mt-3 flex items-center gap-3 w-full text-rose-500 hover:bg-rose-50 rounded-2xl transition-all py-3 font-bold text-sm", !isOpen && !isMobile && "justify-center")}>
-                <LogOut className="w-5 h-5 shrink-0" />
-                {(isOpen || isMobile) && <span>Keluar</span>}
-              </button>
-            </>
-          ) : (
-            <Link to="/login" onClick={handleMenuClick} className={cn("flex items-center gap-3 w-full bg-[#031466] text-white rounded-2xl py-3.5 shadow-lg font-bold text-sm", !isOpen && !isMobile && "justify-center")}>
-              <UserIcon className="w-5 h-5 shrink-0" />
-              {(isOpen || isMobile) && <span>Masuk</span>}
-            </Link>
-          )}
+            )}
+          </div>
         </div>
       </motion.aside>
     </>

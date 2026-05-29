@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Book, ChevronLeft, ChevronRight, Award, Star, Zap,
-  History, X, Calendar, Edit3, Check, Trophy, MousePointer2,
+  History, X, Calendar, Trophy, MousePointer2,
   ClipboardCheck, Rocket, MessageSquare, PenTool
 } from 'lucide-react';
 import { useStore } from '../lib/store';
@@ -16,8 +16,6 @@ const Profile: React.FC = () => {
   const { user, reflections, updateProfile, topics, quizResults } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isEmojiModalOpen, setIsEmojiModalOpen] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [newName, setNewName] = useState(user?.username || "");
   const [currentPage, setCurrentPage] = useState(0);
 
   if (!user) return null;
@@ -39,13 +37,6 @@ const Profile: React.FC = () => {
   const calculatedXP = useMemo(() => {
     return (stats.totalQuizzes * 50) + ((reflections?.length || 0) * 20) + ((topics?.length || 0) * 10);
   }, [stats.totalQuizzes, reflections, topics]);
-
-  const handleUpdateName = () => {
-    if (newName.trim()) {
-      updateProfile({ username: newName });
-    }
-    setIsEditingName(false);
-  };
 
   const handleSelectEmoji = (emoji: string) => {
     updateProfile({ photoUrl: emoji });
@@ -77,29 +68,7 @@ const Profile: React.FC = () => {
           {/* User Info Area */}
           <div className="flex-1 text-center md:text-left space-y-3 md:space-y-4 w-full">
             <div className="flex flex-col md:flex-row items-center md:justify-start gap-3 md:gap-4">
-              {isEditingName ? (
-                <div className="flex items-center gap-2 bg-white/20 p-1.5 md:p-2 rounded-2xl md:rounded-3xl backdrop-blur-md w-full max-w-[280px]">
-                  <input 
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateName()}
-                    className="text-2xl md:text-3xl font-black text-white bg-transparent outline-none px-3 w-full"
-                    autoFocus
-                  />
-                  <button onClick={handleUpdateName} className="p-2 md:p-3 bg-green-500 text-white rounded-xl md:rounded-2xl hover:scale-105 transition-transform">
-                    <Check size={20}/>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-white italic tracking-tighter drop-shadow-lg truncate max-w-[250px] sm:max-w-xs md:max-w-md">
-                    {user.username}
-                  </h2>
-                  <button onClick={() => setIsEditingName(true)} className="text-white/40 hover:text-orange-400 transition-colors p-2 rounded-full hover:bg-white/10">
-                    <Edit3 size={24} className="md:w-7 md:h-7" />
-                  </button>
-                </div>
-              )}
+              {/* Header removed as per user request */}
             </div>
             
             <p className="text-lg md:text-2xl text-blue-100 font-bold italic">"{user.bio || 'Digital Literacy Explorer'}"</p>

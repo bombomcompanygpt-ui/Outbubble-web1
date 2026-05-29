@@ -21,7 +21,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 1,
     title: "Bedah Tuntas Proyek IKN: Perspektif Netral",
     category: "Sosial",
-    image: "https://images.unsplash.com/photo-1596438676196-15568c98e207?auto=format&fit=crop&q=80&w=800",
+    image: "/src/assets/images/ikn_illustration_1780059498536.png",
     description: "Jerhemy Nemo mengajak kita melihat lebih dekat perkembangan IKN di Kalimantan. Analisis mendalam mengenai infrastruktur, visi masa depan Indonesia, dan bagaimana proyek ini berdampak pada tatanan sosial masyarakat sekitar.",
     author: "Jerhemy Nemo",
     readTime: "3 min watch",
@@ -31,7 +31,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 2,
     title: "Kontroversi Makan Bergizi Gratis (MBG)",
     category: "Politik",
-    image: "https://images.unsplash.com/photo-1488459711635-de2724497586?auto=format&fit=crop&q=80&w=800",
+    image: "/src/assets/images/makan_gratis_1780059513810.png",
     description: "Membahas pro dan kontra program Makan Bergizi Gratis dari sisi anggaran serta efektivitas implementasi distribusi pangan di sekolah-sekolah dasar seluruh Indonesia. Apakah kebijakan ini merupakan investasi jangka panjang?",
     author: "Akurat.co",
     readTime: "2 min watch",
@@ -41,7 +41,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 3,
     title: "Dilema Kenaikan Harga BBM",
     category: "Ekonomi",
-    image: "https://images.unsplash.com/photo-1543132220-3ce99c5ae93b?auto=format&fit=crop&q=80&w=800",
+    image: "/src/assets/images/bbm_price_1780059533098.png",
     description: "Pahami mekanisme penetapan harga pasar global dan bagaimana fluktuasi ini berdampak langsung pada daya beli masyarakat Indonesia, subsidi energi, serta tantangan ekonomi makro yang dihadapi pemerintah.",
     author: "Triasambari",
     readTime: "4 min watch",
@@ -51,7 +51,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 4,
     title: "Demo Penutupan Jurusan Kampus",
     category: "Edukasi",
-    image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=800",
+    image: "/src/assets/images/campus_demo_1780059552904.png",
     description: "Aksi protes mahasiswa terkait kebijakan penutupan beberapa jurusan di universitas yang dianggap kurang relevan dengan industri 4.0. Apa alasan di baliknya dan bagaimana nasib integritas akademik?",
     author: "BBC Indonesia",
     readTime: "5 min watch",
@@ -61,7 +61,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 5,
     title: "Nasib Driver: Tarif Gojek Turun",
     category: "Ekonomi",
-    image: "https://images.unsplash.com/photo-1619641782822-233503a2777b?auto=format&fit=crop&q=80&w=800",
+    image: "/src/assets/images/driver_fare_1780059572138.png",
     description: "Analisis penurunan tarif ojek online. Bagaimana nasib para pengemudi di tengah persaingan platform yang ketat? Tinjauan mengenai kesejahteraan ekonomi mitra driver di era ekonomi digital.",
     author: "Dunia Neo",
     readTime: "3 min watch",
@@ -160,7 +160,7 @@ const Explore: React.FC = () => {
               className="group bg-white rounded-[45px] overflow-hidden shadow-xl hover:shadow-[0_30px_60px_-15px_rgba(3,20,102,0.3)] transition-all duration-500 border border-slate-100 cursor-pointer flex flex-col"
             >
               <div className="relative aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5] overflow-hidden">
-                <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                <img src={item.image} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#031466] via-[#031466]/20 to-transparent opacity-90" />
                 <div className="absolute bottom-6 left-6 right-6 text-white z-10">
                    <span className="bg-blue-500/90 backdrop-blur-md px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase mb-3 inline-flex items-center gap-2 shadow-lg">

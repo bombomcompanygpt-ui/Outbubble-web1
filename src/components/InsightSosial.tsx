@@ -58,6 +58,30 @@ const CONTENT_DATA: Record<string, ContentItem[]> = {
   ]
 };
 
+const TAB_INFOS: Record<string, { banner: string; text: string; action: string; badge: string; color: string }> = {
+  jurnal: {
+    banner: "/src/assets/images/jurnal_banner_1780059610529.png",
+    badge: "Metodologi Ilmiah",
+    color: "from-purple-500/10 to-indigo-500/5 border-purple-200 text-purple-700",
+    text: "Kumpulan karya ilmiah & literatur akademik tepercaya dari peneliti global yang membuktikan efek sistematis algoritma media sosial, gelembung informasi (filter bubble), dan polarisasi opini publik secara empiris.",
+    action: "Gunakan data ilmiah ini sebagai dasar akademis logis untuk meruntuhkan bias batin."
+  },
+  berita: {
+    banner: "/src/assets/images/berita_banner_1780059627337.png",
+    badge: "Liputan Jurnalistik",
+    color: "from-blue-500/10 to-cyan-500/5 border-blue-200 text-blue-700",
+    text: "Ulasan pers nasional dan liputan jurnalistik terkemuka mengenai dinamika sosial nyata, ancaman polarisasi pemilu, penyebaran hoaks, serta gerakan masyarakat sipil Indonesia melawan isolasi informasi.",
+    action: "Amati bagaimana teori ruang gema terwujud dalam perdebatan dan diskursus sosial sehari-hari."
+  },
+  tiktok: {
+    banner: "/src/assets/images/tiktok_banner_1780059643772.png",
+    badge: "Edukasi Visual Cepat",
+    color: "from-pink-500/10 to-rose-500/5 border-pink-200 text-pink-700",
+    text: "Video edukasi interaktif pilihan dari kreator konten cerdas dan instansi resmi yang membongkar trik psikologis algoritma, perangkap dopamin, serta tips lincah ber-literasi digital di media sosial.",
+    action: "Tonton video edukasi kilat berdurasi pendek untuk mendapatkan ringkasan praktis instan."
+  }
+};
+
 const InsightSosial: React.FC = () => {
   const { user, toggleBookmark } = useStore();
   const [activeTab, setActiveTab] = useState<'jurnal' | 'berita' | 'tiktok'>('jurnal');
@@ -205,25 +229,60 @@ const InsightSosial: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10"
+            transition={{ duration: 0.3 }}
+            className="space-y-10"
           >
-            {CONTENT_DATA[activeTab].map((item) => {
-              const isTikTok = activeTab === 'tiktok';
+            {/* ILLUSTRATED SECTION BANNER CARD */}
+            <div className={cn(
+              "bg-gradient-to-br border rounded-[40px] p-6 sm:p-8 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-10 shadow-lg relative overflow-hidden",
+              TAB_INFOS[activeTab].color
+            )}>
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808005_1px,transparent_1px),linear-gradient(to_bottom,#80808005_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none opacity-50" />
+              
+              <div className="w-full md:w-[320px] lg:w-[400px] aspect-[16/9] rounded-[30px] overflow-hidden shadow-md shrink-0 border border-slate-200/40 relative z-10">
+                <img 
+                  src={TAB_INFOS[activeTab].banner} 
+                  alt={activeTab} 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <div className="flex-1 space-y-3 relative z-10 text-left">
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-white/80 border border-slate-200/50 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-wider shadow-sm text-slate-600">
+                  <Sparkles size={12} className="text-amber-500 animate-pulse" /> {TAB_INFOS[activeTab].badge}
+                </span>
+                <h3 className="text-xl md:text-3xl font-black text-[#031466] tracking-tight uppercase leading-none mt-1">
+                  Eksplorasi {activeTab === 'jurnal' ? 'Jurnal Ilmiah' : activeTab === 'berita' ? 'Berita & Opini Publik' : 'Edukasi Konten Kreatif'}
+                </h3>
+                <p className="text-xs md:text-sm lg:text-base text-slate-600 font-medium leading-relaxed">
+                  {TAB_INFOS[activeTab].text}
+                </p>
+                <div className="pt-2 text-[10px] md:text-xs font-bold text-slate-500 italic bg-white/30 backdrop-blur-sm p-3 rounded-2xl border border-white/40 flex items-center gap-2">
+                  <span className="text-blue-500 text-sm">💡</span> {TAB_INFOS[activeTab].action}
+                </div>
+              </div>
+            </div>
 
-              return (
-                <motion.div 
-                  whileHover={{ y: -8 }}
-                  key={item.id} 
-                  className="group bg-white rounded-[35px] md:rounded-[45px] overflow-hidden border border-slate-100 shadow-xl hover:shadow-[0_30px_60px_-15px_rgba(3,20,102,0.3)] transition-all flex flex-col cursor-pointer"
-                  onClick={() => isTikTok ? setSelectedTiktokVideo(item) : window.open(item.link, '_blank')}
-                >
-                  {/* THUMBNAIL PREVIEW */}
-                  <div className="relative aspect-[4/5] sm:aspect-auto sm:h-72 md:h-80 overflow-hidden shrink-0 bg-black">
-                    <img 
-                      src={item.image} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90" 
-                      alt={item.title} 
-                    />
+            {/* THE LIST OF GRID CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
+              {CONTENT_DATA[activeTab].map((item) => {
+                const isTikTok = activeTab === 'tiktok';
+
+                return (
+                  <motion.div 
+                    whileHover={{ y: -8 }}
+                    key={item.id} 
+                    className="group bg-white rounded-[35px] md:rounded-[45px] overflow-hidden border border-slate-100 shadow-xl hover:shadow-[0_30px_60px_-15px_rgba(3,20,102,0.3)] transition-all flex flex-col cursor-pointer"
+                    onClick={() => isTikTok ? setSelectedTiktokVideo(item) : window.open(item.link, '_blank')}
+                  >
+                    {/* THUMBNAIL PREVIEW */}
+                    <div className="relative aspect-[4/5] sm:aspect-auto sm:h-72 md:h-80 overflow-hidden shrink-0 bg-black">
+                      <img 
+                        src={item.image} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90" 
+                        alt={item.title} 
+                      />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#031466]/90 via-[#031466]/20 to-transparent" />
                     
                     <div className="absolute top-5 left-5 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full text-[9px] md:text-[10px] font-black text-[#031466] uppercase tracking-widest shadow-lg">
@@ -283,6 +342,7 @@ const InsightSosial: React.FC = () => {
                 </motion.div>
               );
             })}
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>
