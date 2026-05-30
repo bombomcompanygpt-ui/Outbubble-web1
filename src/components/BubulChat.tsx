@@ -4,6 +4,7 @@ import { Send, RefreshCw, User, X, Sparkles, BookOpen, Trash2, HelpCircle } from
 import { useStore } from '../lib/store';
 import { cn } from '../lib/utils';
 import { getChatResponse } from "../services/gemini";
+
 // SYSTEM_INSTRUCTION yang dioptimalkan untuk analisis mendalam & kontekstual (dipasangkan dengan backend)
 const SYSTEM_INSTRUCTION = `
   Nama kamu adalah Bubul, asisten virtual dari web OutBubble berwujud gelembung biru ceria yang sangat cerdas, gaul, dan analitis.
@@ -97,13 +98,14 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
         }))
       ];
 
-// ✅ GANTI DENGAN KODE BARU INI:
-const chatHistoryMapped = chatHistory.map(h => ({
-  role: h.role === 'bubul' ? 'model' : 'user',
-  parts: h.text
-}));
+      // Format riwayat pesan dengan penegasan tipe data kustom (Type Assertion) untuk kompatibilitas SDK client-side
+      const chatHistoryMapped = chatHistory.map(h => ({
+        role: (h.role === 'bubul' ? 'model' : 'user') as 'model' | 'user',
+        parts: [{ text: h.text }]
+      }));
 
-const text = await getChatResponse(contents, chatHistoryMapped);
+      // Memanggil fungsi eksternal Gemini secara langsung 
+      const text = await getChatResponse(contents, chatHistoryMapped);
       setChatHistory([...newHistory, { role: 'bubul', text: text }]);
     } catch (error) {
       setChatHistory([...newHistory, { role: 'bubul', text: "Maaf ya, radar analisis digital Bubul mendadak kehilangan koneksi! 🫧" }]);
