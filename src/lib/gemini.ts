@@ -1,11 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Menggunakan import.meta.env agar terbaca dengan benar di Vite + Vercel
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || "" });
 
 export const generatePerspectives = async (topic: string) => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash", // Menggunakan model stabil yang didukung penuh oleh SDK
       contents: `Berikan dua perspektif yang berbeda (Pro dan Kontra) mengenai topik: "${topic}". 
       Format dalam JSON dengan kunci: "pro" (string), "contra" (string), dan "summary" (string). 
       Gunakan bahasa yang santai dan mudah dimengerti siswa SMA.`,
@@ -33,7 +34,7 @@ export const generatePerspectives = async (topic: string) => {
 export const generateQuizQuestions = async (topic: string) => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Buat 3 pertanyaan refleksi kritis (setuju/tidak setuju) tentang "${topic}" untuk siswa SMA. 
       Format dalam JSON array of objects dengan kunci: "question" (string), "explanation" (string).`,
       config: {
@@ -61,7 +62,7 @@ export const generateQuizQuestions = async (topic: string) => {
 export const generateSimulationFeed = async (interests: string[]) => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Buat 6 konten feed media sosial (simulasi) berdasarkan minat: ${interests.join(", ")}. 
       Buat konten yang sangat spesifik dan cenderung bias (filter bubble) sesuai minat tersebut. 
       Format dalam JSON array of objects dengan kunci: "title" (string), "source" (string), "type" (string). 
@@ -96,7 +97,7 @@ export const generateGameQuestions = async (gameType: 'bias' | 'perspective') =>
       : "Buat 3 skenario untuk game 'Role Play Perspektif'. Setiap skenario harus melatih empati. Format JSON array dengan kunci: 'scenario' (string), 'options' (array of objects with 'text' and 'correct' boolean).";
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -135,20 +136,26 @@ export const generateGameQuestions = async (gameType: 'bias' | 'perspective') =>
 
 export const getChatResponse = async (message: string, history: { role: string, parts: string }[]) => {
   try {
+    // Penyesuaian ke fungsi ai.chats.create yang sesuai dengan standar SDK @google/genai client-side
     const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       config: {
         systemInstruction: `Anda adalah OutBubble AI Assistant. Tugas Anda adalah membantu siswa SMA memahami literasi digital, echo chamber, filter bubble, dan algoritma media sosial. 
         Anda HANYA boleh menjawab pertanyaan yang berkaitan dengan topik-topik tersebut. 
         Jika pengguna bertanya hal lain, tolak dengan sopan dan arahkan kembali ke topik literasi digital atau jelaskan bagaimana pertanyaan mereka mungkin berkaitan dengan gelembung informasi. 
         Gunakan bahasa yang santai, ramah, dan mudah dimengerti remaja (bahasa gaul sopan diperbolehkan).`,
       },
+      // Mengalirkan riwayat chat sebelumnya jika ada parameter history
+      history: history.map(h => ({
+        role: h.role,
+        parts: [{ text: h.parts }]
+      }))
     });
 
     const response = await chat.sendMessage({ message });
     return response.text || "Maaf, aku sedang tidak bisa berpikir. Coba lagi nanti ya!";
   } catch (error) {
     console.error("Error in chat:", error);
-    return "Ups, ada masalah koneksi ke otak AI-ku. Coba lagi ya!";
+    return "Maaf ya, radar analisis digital Bubul mendadak kehilangan koneksi! 🫧";
   }
 };
