@@ -29,6 +29,7 @@ export interface Reply {
   authorName: string;
   content: string;
   createdAt: string;
+  avatarSeed?: string;
 }
 
 export interface QuizResult {
@@ -75,6 +76,7 @@ export interface DiscussionTopic {
   title: string;
   authorId: string;
   authorName: string;
+  authorAvatar?: string;
   content: string;
   image?: string;
   lens?: string;
@@ -171,7 +173,73 @@ export const useStore = create<AppState>()(
       sidebarOpen: true,
       themeMode: 'light',
       topics: [
-        { id: 't1', title: 'Kenapa FYP-ku isinya ini terus?', authorId: '1', authorName: 'Budi', content: 'Aku baru sadar kalau algoritma bener-bener ngebentuk pandanganku...', likes: 12, repliesCount: 3, repostsCount: 1, timestamp: Date.now() - 3600000 },
+        {
+          id: "s1",
+          title: "",
+          authorId: "uid-budi",
+          authorName: "Ksatria_BebasBubble 🛡️",
+          authorAvatar: "Felix",
+          content: "Capek banget tiap perhelatan pemilu, timeline sosmed isinya adu domba melulu. Berasa warga dipecah belah sama algoritma buzzer 😭. Kayak di-lock dalam gelembung amarah.",
+          lens: "Kritik",
+          likes: 18,
+          repliesCount: 2,
+          repostsCount: 3,
+          timestamp: Date.now() - 3600000 * 5,
+          createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+          replies: [
+            { id: "sr-1", authorName: "Pendeteksi_Bias 🧠", content: "Sama kak, mending ganti tab ke luar gelembung biar pencerahan.", createdAt: new Date(Date.now() - 3600000 * 4).toISOString(), avatarSeed: "Buster" },
+            { id: "sr-2", authorName: "Logika_Murni ⚖️", content: "Ini contoh nyata Filter Bubble dikombinasiin sama Echo Chamber. Ngeri pol!", createdAt: new Date(Date.now() - 3600000 * 3.5).toISOString(), avatarSeed: "Leo" }
+          ]
+        },
+        {
+          id: "s2",
+          title: "",
+          authorId: "uid-lisa",
+          authorName: "Skeptis_Muda 🔍",
+          authorAvatar: "Anika",
+          content: "Guys, coba buktiin filter bubble kalian sekarang! Cari satu kata kunci kontroversial di Google/TikTok pake HP kalian, trus bandingin sama hasil pencarian di HP temen kalian yang beda kubu politik. Hasilnya beneran beda 180 derajat! Kita disuapin kenyataan yang beda.",
+          lens: "Fakta",
+          likes: 29,
+          repliesCount: 1,
+          repostsCount: 5,
+          timestamp: Date.now() - 3600000 * 2,
+          createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+          replies: [
+            { id: "sr-3", authorName: "Gelembung_Pecah 🫧", content: "Gila gw baru coba td sore, hasilnya jomplang banget! Serem juga ya cara kerja mesin rekomendasi.", createdAt: new Date(Date.now() - 3600000).toISOString(), avatarSeed: "Daisy" }
+          ]
+        },
+        {
+          id: "s3",
+          title: "",
+          authorId: "uid-outb",
+          authorName: "OutBubble_Inspirator ✨",
+          authorAvatar: "Jack",
+          content: "Pondasi utama negara demokrasi yang sehat di era modern itu bukan cuma kebebasan berpendapat, tapi LITERASI DIGITAL kritis. Tanpa itu, kita cuma jadi bidak catur yang digerakin algoritma pembuat emosi.",
+          lens: "Harapan",
+          likes: 42,
+          repliesCount: 0,
+          repostsCount: 12,
+          timestamp: Date.now() - 1800000,
+          createdAt: new Date(Date.now() - 1800000).toISOString(),
+          replies: []
+        },
+        { 
+          id: 't1', 
+          title: '', 
+          authorId: '1', 
+          authorName: 'Budi_Kece 😎', 
+          authorAvatar: 'Felix',
+          content: 'Aku baru sadar kalau algoritma bener-bener ngebentuk pandanganku sehari-hari. FYP-ku isinya konspirasi dan gosip terus!', 
+          lens: 'Opini',
+          likes: 12, 
+          repliesCount: 1, 
+          repostsCount: 1, 
+          timestamp: Date.now() - 3600000,
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          replies: [
+            { id: "sr-4", authorName: "Lia_Pintar 💡", content: "Sama, setelah sadar aku langsung rapi-rapi timeline biar sehat lagi.", createdAt: new Date(Date.now() - 1800000).toISOString(), avatarSeed: "Lia" }
+          ]
+        },
       ],
       reflections: [],
       quizResults: [],
