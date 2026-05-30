@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, RefreshCw, User, X, Sparkles, BookOpen, Trash2, HelpCircle } from 'lucide-react';
+import { Send, RefreshCw, User, X, Sparkles, Trash2, HelpCircle } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { cn } from '../lib/utils';
 import { getChatResponse } from "../services/gemini";
 
-// SYSTEM_INSTRUCTION yang dioptimalkan untuk analisis mendalam & kontekstual (dipasangkan dengan backend)
+// SYSTEM_INSTRUCTION yang dioptimalkan untuk analisis mendalam & kontekstual
 const SYSTEM_INSTRUCTION = `
   Nama kamu adalah Bubul, asisten virtual dari web OutBubble berwujud gelembung biru ceria yang sangat cerdas, gaul, dan analitis.
   Tugas utama kamu adalah mendampingi pengguna mendeteksi, mendiskusikan, dan memecahkan gelembung informasi digital seperti Filter Bubble, Echo Chamber, Polarisasi Algoritma, Attention Economy, dan Bias Konfirmasi.
@@ -88,26 +88,28 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
     setIsTyping(true);
 
     try {
-      // Menyertakan SYSTEM_INSTRUCTION ke dalam payload konteks agar AI patuh pada format analisis mendalam
       const recentHistory = newHistory.slice(-10);
+      
+      // 1. Format payload utama (contents) agar sesuai strict format SDK Gemini
       const contents = [
         { role: 'user' as const, parts: [{ text: `SYSTEM INSTRUCTION: ${SYSTEM_INSTRUCTION}` }] },
         ...recentHistory.map(m => ({
-          role: m.role === 'bubul' ? 'model' as const : 'user' as const,
-          parts: [{ text: m.text }],
+          role: (m.role === 'bubul' ? 'model' : 'user') as 'model' | 'user',
+          parts: [{ text: m.text || '' }],
         }))
       ];
 
-      // Format riwayat pesan dengan penegasan tipe data kustom (Type Assertion) untuk kompatibilitas SDK client-side
+      // 2. Format history sekunder jika getChatResponse Anda membutuhkan parameter kedua dengan format khusus
       const chatHistoryMapped = chatHistory.map(h => ({
         role: (h.role === 'bubul' ? 'model' : 'user') as 'model' | 'user',
-        parts: [{ text: h.text }]
+        parts: [{ text: h.text || '' }]
       }));
 
-      // Memanggil fungsi eksternal Gemini secara langsung 
+      // Memanggil API helper Gemini secara langsung
       const text = await getChatResponse(contents, chatHistoryMapped);
-      setChatHistory([...newHistory, { role: 'bubul', text: text }]);
+      setChatHistory([...newHistory, { role: 'bubul', text: text || "Maaf, Bubul kehabisan kata-kata. 🫧" }]);
     } catch (error) {
+      console.error(error);
       setChatHistory([...newHistory, { role: 'bubul', text: "Maaf ya, radar analisis digital Bubul mendadak kehilangan koneksi! 🫧" }]);
     } finally {
       setIsTyping(false);
@@ -132,14 +134,13 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
     }
   };
 
-  // Render pesan yang diperkuat untuk mendukung heading kustom, bold, dan list yang lebih rapi
+  // Render format pesan
   const renderMessage = (text: string) => {
     return text.split('\n').map((line, i) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) return <div key={i} className="h-2" />;
 
       const isBullet = trimmedLine.startsWith('-');
-      // Mengubah **teks** menjadi elemen strong dengan styling khusus agar menonjol secara visual
       const formattedLine = trimmedLine.replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#031466] font-extrabold bg-blue-50/50 px-1 rounded">$1</strong>');
       
       if (isBullet) {
@@ -180,7 +181,6 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
           <BubulMascot className="w-full h-full" />
         </motion.div>
 
-        {/* Action Buttons in Header */}
         <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10">
           <button 
             onClick={handleClearHistory}
@@ -204,7 +204,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
 
         <div className="text-center mt-12">
           <h2 className="text-lg font-black text-[#031466] flex items-center justify-center gap-1.5 tracking-tight">
-            Bubul Labirin AI <Sparkles size={15} className="text-yellow-500 fill-yellow-400 animate-pulse animate-duration-1000" />
+            Bubul Labirin AI <Sparkles size={15} className="text-yellow-500 fill-yellow-400 animate-pulse" />
           </h2>
           <div className="flex items-center justify-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-ping shrink-0" />
@@ -216,7 +216,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
       </div>
 
       {/* AREA PESAN */}
-      <div ref={scrollRef} className="flex-1 p-5 overflow-y-auto space-y-4 custom-scrollbar bg-[#f8faff]/50">
+      <div ref={scrollRef} className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#f8faff]/50">
         {chatHistory.map((msg, i) => (
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
@@ -234,7 +234,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
             )}
 
             <div className={cn(
-              "max-w-[85%] px-4.5 py-3 shadow-sm transition-all text-xs md:text-sm overflow-hidden", 
+              "max-w-[85%] px-4.5 py-3 shadow-sm text-xs md:text-sm overflow-hidden", 
               msg.role === 'bubul' 
                 ? "bg-white text-slate-800 rounded-[22px] rounded-bl-[6px] border border-slate-100" 
                 : "bg-gradient-to-br from-blue-600 to-indigo-750 text-white rounded-[22px] rounded-br-[6px] font-medium"
@@ -244,21 +244,15 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
           </motion.div>
         ))}
         
-        {/* LOADING INDICATOR */}
-        <AnimatePresence>
-          {isTyping && (
-            <motion.div 
-              initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-3"
-            >
-               <BubulMascot className="w-7 h-7 opacity-60 animate-bounce" />
-               <div className="px-4 py-2 bg-white rounded-full border border-blue-50/60 flex items-center gap-2 shadow-sm">
-                  <RefreshCw size={11} className="animate-spin text-[#031466]" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Bubul sedang menganalisis...</span>
-               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isTyping && (
+          <div className="flex items-center gap-3">
+             <BubulMascot className="w-7 h-7 opacity-60 animate-bounce" />
+             <div className="px-4 py-2 bg-white rounded-full border border-blue-50/60 flex items-center gap-2 shadow-sm">
+                <RefreshCw size={11} className="animate-spin text-[#031466]" />
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Bubul sedang menganalisis...</span>
+             </div>
+          </div>
+        )}
       </div>
 
       {/* TOPIC SUGGESTION CHIPS */}
