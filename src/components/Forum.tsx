@@ -30,6 +30,7 @@ const Forum: React.FC = () => {
   
   // Real-time server-side topics state
   const [serverTopics, setServerTopics] = useState<any[]>([]);
+  const [useLocalStoreOnly, setUseLocalStoreOnly] = useState(false);
   const [activeLensFilter, setActiveLensFilter] = useState<string>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -60,9 +61,11 @@ const Forum: React.FC = () => {
       })
       .then(data => {
         setServerTopics(data);
+        setUseLocalStoreOnly(false);
       })
       .catch(err => {
         console.warn("REST API topics unavailable. Falling back to Zustand local database:", err);
+        setUseLocalStoreOnly(true);
       });
 
     // 2. Open Server-Sent Events (SSE) stream connection
@@ -70,6 +73,7 @@ const Forum: React.FC = () => {
 
     eventSource.onopen = () => {
       setSseActive(true);
+      setUseLocalStoreOnly(false);
       // Simulate real-time online members count between 4 to 15
       setOnlineCount(Math.floor(Math.random() * 8) + 6);
     };
@@ -80,6 +84,7 @@ const Forum: React.FC = () => {
         console.log("Real-time stream update received:", data);
         if (data.topics) {
           setServerTopics(data.topics);
+          setUseLocalStoreOnly(false);
         }
       } catch (err) {
         console.error("Failed to parse SSE topics data stream:", err);
@@ -89,6 +94,7 @@ const Forum: React.FC = () => {
     eventSource.onerror = (err) => {
       console.warn("SSE connection lost. Reverting to local polling state.", err);
       setSseActive(false);
+      setUseLocalStoreOnly(true);
     };
 
     return () => {
@@ -162,6 +168,19 @@ const Forum: React.FC = () => {
 
     playPopSound();
 
+    if (useLocalStoreOnly) {
+      addTopic({
+        ...topicData,
+        likes: 0,
+        replies: [],
+        createdAt: new Date().toISOString()
+      });
+      triggerToast("Letupan tersimpan di penyimpanan lokal!");
+      setNewPost('');
+      setImagePreview(null);
+      return;
+    }
+
     try {
       const response = await fetch("/api/forum/topics", {
         method: "POST",
@@ -189,6 +208,11 @@ const Forum: React.FC = () => {
   const handleLike = async (topicId: string, isLiked: boolean) => {
     playPopSound();
     
+    if (useLocalStoreOnly) {
+      toggleLikeTopic(topicId);
+      return;
+    }
+
     // Optimistic UI updates
     setServerTopics(prev => prev.map(t => {
       if (t.id === topicId) {
@@ -218,6 +242,11 @@ const Forum: React.FC = () => {
     playPopSound();
     triggerToast("Pemikiran berhasil di-repost! 🔄");
     
+    if (useLocalStoreOnly) {
+      repostTopic(topicId);
+      return;
+    }
+
     setServerTopics(prev => prev.map(t => {
       if (t.id === topicId) {
         return { ...t, repostsCount: (t.repostsCount || 0) + 1 };
@@ -240,6 +269,11 @@ const Forum: React.FC = () => {
     if (!window.confirm("Hapus letupan diskusi ini?")) return;
     playPopSound();
     triggerToast("Postingan diskusi dihapus!");
+
+    if (useLocalStoreOnly) {
+      deleteTopic(topicId);
+      return;
+    }
 
     setServerTopics(prev => prev.filter(t => t.id !== topicId));
 
@@ -269,6 +303,12 @@ const Forum: React.FC = () => {
       createdAt: new Date().toISOString(),
       avatarSeed: nameToUse.replace(/\s+/g, '')
     };
+
+    if (useLocalStoreOnly) {
+      addReply(topicId, replyData);
+      triggerToast("Balasan terkirim lurus ke gelembung! 💬");
+      return;
+    }
 
     // Optimistic UI updates
     setServerTopics(prev => prev.map(t => {
@@ -303,7 +343,7 @@ const Forum: React.FC = () => {
   };
 
   // Determine active list
-  const activeTopics = serverTopics.length > 0 ? serverTopics : topics;
+  const activeTopics = useLocalStoreOnly ? topics : (serverTopics.length > 0 ? serverTopics : topics);
 
   // Filter & Search computation
   const filteredTopics = activeTopics.filter(t => {
