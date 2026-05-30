@@ -96,6 +96,7 @@ const InsightSosial: React.FC = () => {
   const [submitInputUrl, setSubmitInputUrl] = useState('');
   const [submitDesc, setSubmitDesc] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +177,7 @@ const InsightSosial: React.FC = () => {
           setSubmitInputUrl('');
           setSubmitDesc('');
           setSelectedFile(null);
+          setFilePreview(null);
         }, 4000);
       } else {
         setSubmitStatus('idle');
@@ -449,6 +451,10 @@ const InsightSosial: React.FC = () => {
           onClick={() => {
             setSubmitStatus('idle');
             setSubmitError('');
+            setSelectedFile(null);
+            setFilePreview(null);
+            setSubmitDesc('');
+            setSubmitInputUrl('');
             setIsSubmitModalOpen(true);
           }}
           className="relative z-10 mt-8 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-400 hover:to-cyan-300 text-white px-10 py-5 md:px-14 md:py-6 rounded-full font-black uppercase tracking-[0.2em] text-xs md:text-sm shadow-[0_10px_30px_rgba(59,130,246,0.5)] hover:shadow-[0_15px_40px_rgba(59,130,246,0.7)] hover:-translate-y-1 transition-all duration-300"
@@ -561,7 +567,13 @@ const InsightSosial: React.FC = () => {
                           >
                             {selectedFile ? (
                               <div className="flex flex-col items-center text-blue-600">
-                                <FileCheck size={48} className="mb-3 drop-shadow-sm" />
+                                {filePreview ? (
+                                  <div className="relative w-40 h-28 rounded-xl overflow-hidden border border-blue-200/60 mb-2 shadow-sm bg-white">
+                                    <img src={filePreview} className="w-full h-full object-cover" alt="upload preview" />
+                                  </div>
+                                ) : (
+                                  <FileCheck size={48} className="mb-3 drop-shadow-sm" />
+                                )}
                                 <p className="font-bold text-sm truncate max-w-full px-4">{selectedFile.name}</p>
                                 <p className="text-xs text-blue-400 mt-1 font-medium">Klik untuk mengganti file</p>
                               </div>
@@ -581,8 +593,18 @@ const InsightSosial: React.FC = () => {
                               accept=".pdf,.jpg,.jpeg,.png,.mp4"
                               onChange={(e) => {
                                 if (e.target.files && e.target.files.length > 0) {
-                                  setSelectedFile(e.target.files[0]);
+                                  const file = e.target.files[0];
+                                  setSelectedFile(file);
                                   setSubmitError('');
+                                  if (file.type.startsWith('image/')) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setFilePreview(reader.result as string);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  } else {
+                                    setFilePreview(null);
+                                  }
                                 }
                               }}
                             />

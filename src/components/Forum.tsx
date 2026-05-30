@@ -178,6 +178,9 @@ const Forum: React.FC = () => {
       triggerToast("Letupan tersimpan di penyimpanan lokal!");
       setNewPost('');
       setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
 
@@ -202,6 +205,9 @@ const Forum: React.FC = () => {
 
     setNewPost('');
     setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // Trigger Like API
