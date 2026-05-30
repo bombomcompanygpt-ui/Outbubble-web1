@@ -3,9 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, RefreshCw, User, X, Sparkles, Trash2, HelpCircle } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { cn } from '../lib/utils';
-import { getChatResponse } from "../services/gemini";
 
-// SYSTEM_INSTRUCTION yang dioptimalkan untuk analisis mendalam & kontekstual
+// SYSTEM_INSTRUCTION yang dioptimalkan untuk analisis mendalam & kontekstual (dipasangkan dengan backend)
 const SYSTEM_INSTRUCTION = `
   Nama kamu adalah Bubul, asisten virtual dari web OutBubble berwujud gelembung biru ceria yang sangat cerdas, gaul, dan analitis.
   Tugas utama kamu adalah mendampingi pengguna mendeteksi, mendiskusikan, dan memecahkan gelembung informasi digital seperti Filter Bubble, Echo Chamber, Polarisasi Algoritma, Attention Economy, dan Bias Konfirmasi.
@@ -90,7 +89,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
     try {
       const recentHistory = newHistory.slice(-10);
       
-      // 1. Format payload utama (contents) agar sesuai strict format SDK Gemini
+      // Membawa SYSTEM_INSTRUCTION dan memetakan history ke format objek parts [{ text }] yang valid
       const contents = [
         { role: 'user' as const, parts: [{ text: `SYSTEM INSTRUCTION: ${SYSTEM_INSTRUCTION}` }] },
         ...recentHistory.map(m => ({
@@ -99,15 +98,19 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
         }))
       ];
 
-      // 2. Format history sekunder jika getChatResponse Anda membutuhkan parameter kedua dengan format khusus
-      const chatHistoryMapped = chatHistory.map(h => ({
-        role: (h.role === 'bubul' ? 'model' : 'user') as 'model' | 'user',
-        parts: [{ text: h.text || '' }]
-      }));
+      // MENGGUNAKAN FETCH KE API BACKEND AGAR TIDAK ERROR RESOLVE FILE
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents })
+      });
 
-      // Memanggil API helper Gemini secara langsung
-      const text = await getChatResponse(contents, chatHistoryMapped);
-      setChatHistory([...newHistory, { role: 'bubul', text: text || "Maaf, Bubul kehabisan kata-kata. 🫧" }]);
+      if (!res.ok) throw new Error('API Error');
+      
+      const data = await res.json();
+      const text = data.text || "Aduh, sistem analisaku sedikit tersendat. Bisa kamu ulangi gejalanya? 🫧";
+
+      setChatHistory([...newHistory, { role: 'bubul', text: text }]);
     } catch (error) {
       console.error(error);
       setChatHistory([...newHistory, { role: 'bubul', text: "Maaf ya, radar analisis digital Bubul mendadak kehilangan koneksi! 🫧" }]);
@@ -134,7 +137,7 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
     }
   };
 
-  // Render format pesan
+  // Render format pesan kustom pendukung bullet-points & bold
   const renderMessage = (text: string) => {
     return text.split('\n').map((line, i) => {
       const trimmedLine = line.trim();
