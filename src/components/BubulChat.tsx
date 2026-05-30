@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, RefreshCw, User, X, Sparkles, BookOpen, Trash2, HelpCircle } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { cn } from '../lib/utils';
-
+import { getChatResponse } from "../services/gemini";
 // SYSTEM_INSTRUCTION yang dioptimalkan untuk analisis mendalam & kontekstual (dipasangkan dengan backend)
 const SYSTEM_INSTRUCTION = `
   Nama kamu adalah Bubul, asisten virtual dari web OutBubble berwujud gelembung biru ceria yang sangat cerdas, gaul, dan analitis.
@@ -97,15 +97,13 @@ const BubulChat: React.FC<BubulChatProps> = ({ onClose }) => {
         }))
       ];
 
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents })
-      });
+// ✅ GANTI DENGAN KODE BARU INI:
+const chatHistoryMapped = chatHistory.map(h => ({
+  role: h.role === 'bubul' ? 'model' : 'user',
+  parts: h.text
+}));
 
-      if (!res.ok) throw new Error('API Error');
-      const data = await res.json();
-      const text = data.text || "Aduh, sistem analisisku sedikit tersendat. Bisa kamu ulangi gejalanya? 🫧";
+const text = await getChatResponse(contents, chatHistoryMapped);
       setChatHistory([...newHistory, { role: 'bubul', text: text }]);
     } catch (error) {
       setChatHistory([...newHistory, { role: 'bubul', text: "Maaf ya, radar analisis digital Bubul mendadak kehilangan koneksi! 🫧" }]);
