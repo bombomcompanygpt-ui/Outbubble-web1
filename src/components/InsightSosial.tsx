@@ -9,6 +9,11 @@ import {
 import { cn } from '../lib/utils';
 import { useStore } from '../lib/store';
 
+// Safe compiled asset imports for Vercel production hosting
+import jurnalBannerImg from '../assets/images/jurnal_banner_1780059610529.png';
+import beritaBannerImg from '../assets/images/berita_banner_1780059627337.png';
+import tiktokBannerImg from '../assets/images/tiktok_banner_1780059643772.png';
+
 // --- INTERFACE DEFINITION ---
 interface ContentItem {
   id: string;
@@ -60,21 +65,21 @@ const CONTENT_DATA: Record<string, ContentItem[]> = {
 
 const TAB_INFOS: Record<string, { banner: string; text: string; action: string; badge: string; color: string }> = {
   jurnal: {
-    banner: "/src/assets/images/jurnal_banner_1780059610529.png",
+    banner: jurnalBannerImg,
     badge: "Metodologi Ilmiah",
     color: "from-purple-500/10 to-indigo-500/5 border-purple-200 text-purple-700",
     text: "Kumpulan karya ilmiah & literatur akademik tepercaya dari peneliti global yang membuktikan efek sistematis algoritma media sosial, gelembung informasi (filter bubble), dan polarisasi opini publik secara empiris.",
     action: "Gunakan data ilmiah ini sebagai dasar akademis logis untuk meruntuhkan bias batin."
   },
   berita: {
-    banner: "/src/assets/images/berita_banner_1780059627337.png",
+    banner: beritaBannerImg,
     badge: "Liputan Jurnalistik",
     color: "from-blue-500/10 to-cyan-500/5 border-blue-200 text-blue-700",
     text: "Ulasan pers nasional dan liputan jurnalistik terkemuka mengenai dinamika sosial nyata, ancaman polarisasi pemilu, penyebaran hoaks, serta gerakan masyarakat sipil Indonesia melawan isolasi informasi.",
     action: "Amati bagaimana teori ruang gema terwujud dalam perdebatan dan diskursus sosial sehari-hari."
   },
   tiktok: {
-    banner: "/src/assets/images/tiktok_banner_1780059643772.png",
+    banner: tiktokBannerImg,
     badge: "Edukasi Visual Cepat",
     color: "from-pink-500/10 to-rose-500/5 border-pink-200 text-pink-700",
     text: "Video edukasi interaktif pilihan dari kreator konten cerdas dan instansi resmi yang membongkar trik psikologis algoritma, perangkap dopamin, serta tips lincah ber-literasi digital di media sosial.",

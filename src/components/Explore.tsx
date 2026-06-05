@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Compass, Newspaper, X, Play, ExternalLink, Clock, User, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+// Import local assets securely so Vite packages them correctly in the build bundles
+import iknIllustrationImg from '../assets/images/ikn_illustration_1780059498536.png';
+import makanGratisImg from '../assets/images/makan_gratis_1780059513810.png';
+import bbmPriceImg from '../assets/images/bbm_price_1780059533098.png';
+import campusDemoImg from '../assets/images/campus_demo_1780059552904.png';
+import driverFareImg from '../assets/images/driver_fare_1780059572138.png';
+
 // --- INTERFACE DEFINITION ---
 interface ContentItem {
   id: number;
@@ -21,7 +28,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 1,
     title: "Bedah Tuntas Proyek IKN: Perspektif Netral",
     category: "Sosial",
-    image: "/src/assets/images/ikn_illustration_1780059498536.png",
+    image: iknIllustrationImg,
     description: "Jerhemy Nemo mengajak kita melihat lebih dekat perkembangan IKN di Kalimantan. Analisis mendalam mengenai infrastruktur, visi masa depan Indonesia, dan bagaimana proyek ini berdampak pada tatanan sosial masyarakat sekitar.",
     author: "Jerhemy Nemo",
     readTime: "3 min watch",
@@ -31,7 +38,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 2,
     title: "Kontroversi Makan Bergizi Gratis (MBG)",
     category: "Politik",
-    image: "/src/assets/images/makan_gratis_1780059513810.png",
+    image: makanGratisImg,
     description: "Membahas pro dan kontra program Makan Bergizi Gratis dari sisi anggaran serta efektivitas implementasi distribusi pangan di sekolah-sekolah dasar seluruh Indonesia. Apakah kebijakan ini merupakan investasi jangka panjang?",
     author: "Akurat.co",
     readTime: "2 min watch",
@@ -41,7 +48,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 3,
     title: "Dilema Kenaikan Harga BBM",
     category: "Ekonomi",
-    image: "/src/assets/images/bbm_price_1780059533098.png",
+    image: bbmPriceImg,
     description: "Pahami mekanisme penetapan harga pasar global dan bagaimana fluktuasi ini berdampak langsung pada daya beli masyarakat Indonesia, subsidi energi, serta tantangan ekonomi makro yang dihadapi pemerintah.",
     author: "Triasambari",
     readTime: "4 min watch",
@@ -51,7 +58,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 4,
     title: "Demo Penutupan Jurusan Kampus",
     category: "Edukasi",
-    image: "/src/assets/images/campus_demo_1780059552904.png",
+    image: campusDemoImg,
     description: "Aksi protes mahasiswa terkait kebijakan penutupan beberapa jurusan di universitas yang dianggap kurang relevan dengan industri 4.0. Apa alasan di baliknya dan bagaimana nasib integritas akademik?",
     author: "BBC Indonesia",
     readTime: "5 min watch",
@@ -61,7 +68,7 @@ const EXPLORE_DATA: ContentItem[] = [
     id: 5,
     title: "Nasib Driver: Tarif Gojek Turun",
     category: "Ekonomi",
-    image: "/src/assets/images/driver_fare_1780059572138.png",
+    image: driverFareImg,
     description: "Analisis penurunan tarif ojek online. Bagaimana nasib para pengemudi di tengah persaingan platform yang ketat? Tinjauan mengenai kesejahteraan ekonomi mitra driver di era ekonomi digital.",
     author: "Dunia Neo",
     readTime: "3 min watch",
