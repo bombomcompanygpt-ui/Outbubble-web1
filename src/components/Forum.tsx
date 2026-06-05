@@ -53,20 +53,26 @@ const Forum: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    let pollingInterval: any = null;
+
+    const fetchTopics = () => {
+      fetch("/api/forum/topics")
+        .then(res => {
+          if (!res.ok) throw new Error("Could not fetch server topics");
+          return res.json();
+        })
+        .then(data => {
+          setServerTopics(data);
+          setUseLocalStoreOnly(false);
+        })
+        .catch(err => {
+          console.warn("REST API topics unavailable. Falling back to Zustand local database:", err);
+          setUseLocalStoreOnly(true);
+        });
+    };
+
     // 1. Fetch initial topics list from REST API
-    fetch("/api/forum/topics")
-      .then(res => {
-        if (!res.ok) throw new Error("Could not fetch server topics");
-        return res.json();
-      })
-      .then(data => {
-        setServerTopics(data);
-        setUseLocalStoreOnly(false);
-      })
-      .catch(err => {
-        console.warn("REST API topics unavailable. Falling back to Zustand local database:", err);
-        setUseLocalStoreOnly(true);
-      });
+    fetchTopics();
 
     // 2. Open Server-Sent Events (SSE) stream connection
     const eventSource = new EventSource("/api/forum/stream");
@@ -74,6 +80,11 @@ const Forum: React.FC = () => {
     eventSource.onopen = () => {
       setSseActive(true);
       setUseLocalStoreOnly(false);
+      // Clear fallback polling once SSE establishes correctly
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
       // Simulate real-time online members count between 4 to 15
       setOnlineCount(Math.floor(Math.random() * 8) + 6);
     };
@@ -92,13 +103,22 @@ const Forum: React.FC = () => {
     };
 
     eventSource.onerror = (err) => {
-      console.warn("SSE connection lost. Reverting to local polling state.", err);
+      console.warn("SSE connection lost. Activating short-polling fallback stream.", err);
       setSseActive(false);
-      setUseLocalStoreOnly(true);
+      
+      // Start polling fallback every 4 seconds to sync messages accurately
+      if (!pollingInterval) {
+        pollingInterval = setInterval(() => {
+          fetchTopics();
+        }, 4000);
+      }
     };
 
     return () => {
       eventSource.close();
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
     };
   }, []);
 
@@ -168,23 +188,8 @@ const Forum: React.FC = () => {
 
     playPopSound();
 
-    if (useLocalStoreOnly) {
-      addTopic({
-        ...topicData,
-        likes: 0,
-        replies: [],
-        createdAt: new Date().toISOString()
-      });
-      triggerToast("Letupan tersimpan di penyimpanan lokal!");
-      setNewPost('');
-      setImagePreview(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      return;
-    }
-
     try {
+      // Always target the active REST server database first so that other online people see the post immediately!
       const response = await fetch("/api/forum/topics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -213,11 +218,6 @@ const Forum: React.FC = () => {
   // Trigger Like API
   const handleLike = async (topicId: string, isLiked: boolean) => {
     playPopSound();
-    
-    if (useLocalStoreOnly) {
-      toggleLikeTopic(topicId);
-      return;
-    }
 
     // Optimistic UI updates
     setServerTopics(prev => prev.map(t => {
@@ -248,11 +248,6 @@ const Forum: React.FC = () => {
     playPopSound();
     triggerToast("Pemikiran berhasil di-repost! 🔄");
     
-    if (useLocalStoreOnly) {
-      repostTopic(topicId);
-      return;
-    }
-
     setServerTopics(prev => prev.map(t => {
       if (t.id === topicId) {
         return { ...t, repostsCount: (t.repostsCount || 0) + 1 };
@@ -275,11 +270,6 @@ const Forum: React.FC = () => {
     if (!window.confirm("Hapus letupan diskusi ini?")) return;
     playPopSound();
     triggerToast("Postingan diskusi dihapus!");
-
-    if (useLocalStoreOnly) {
-      deleteTopic(topicId);
-      return;
-    }
 
     setServerTopics(prev => prev.filter(t => t.id !== topicId));
 
@@ -310,12 +300,6 @@ const Forum: React.FC = () => {
       avatarSeed: nameToUse.replace(/\s+/g, '')
     };
 
-    if (useLocalStoreOnly) {
-      addReply(topicId, replyData);
-      triggerToast("Balasan terkirim lurus ke gelembung! 💬");
-      return;
-    }
-
     // Optimistic UI updates
     setServerTopics(prev => prev.map(t => {
       if (t.id === topicId) {
@@ -338,8 +322,8 @@ const Forum: React.FC = () => {
       triggerToast("Balasan terkirim lurus ke gelembung! 💬");
     } catch (err) {
       console.error("API reply failed, falling back to Zustand", err);
-      addReply(topicId, replyData);
     }
+    addReply(topicId, replyData);
   };
 
   // Send static emojis
@@ -507,9 +491,7 @@ const Forum: React.FC = () => {
                     <textarea
                       value={newPost}
                       onChange={(e) => {
-                        if (e.target.value.length <= 280) {
-                          setNewPost(e.target.value);
-                        }
+                        setNewPost(e.target.value);
                       }}
                       placeholder="Bagikan pandanganmu... (Mari kita diskusikan filter bubble, bias konfirmasi, atau algoritma jahat hari ini!)"
                       className="w-full text-base md:text-lg bg-slate-50/50 p-4 rounded-2xl outline-none focus:bg-white resize-none border border-slate-200/60 focus:border-blue-500 font-medium min-h-[110px] text-slate-800 placeholder:text-slate-400 transition-colors"
@@ -517,13 +499,7 @@ const Forum: React.FC = () => {
                     
                     {/* Character limit feedback */}
                     <div className="absolute bottom-3 right-4 flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-slate-400">{newPost.length}/280</span>
-                      <div className="w-5 h-5 rounded-full border-2 border-slate-100 flex items-center justify-center relative">
-                        <div 
-                          className="absolute h-full w-full rounded-full border-2 border-t-blue-500 border-r-blue-500 border-slate-100" 
-                          style={{ transform: `rotate(${(newPost.length / 280) * 360}deg)` }}
-                        />
-                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">{newPost.length} karakter</span>
                     </div>
                   </div>
 
