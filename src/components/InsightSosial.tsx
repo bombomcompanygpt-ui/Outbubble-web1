@@ -9,10 +9,17 @@ import {
 import { cn } from '../lib/utils';
 import { useStore } from '../lib/store';
 
-// Safe compiled asset imports for Vercel production hosting
-import jurnalBannerImg from '../assets/images/jurnal_banner_1780059610529.png';
-import beritaBannerImg from '../assets/images/berita_banner_1780059627337.png';
-import tiktokBannerImg from '../assets/images/tiktok_banner_1780059643772.png';
+// Local string asset paths to prevent compile-time import issues in build servers (e.g. Vercel)
+const jurnalBannerImg = "/src/assets/images/jurnal_banner_1780059610529.png";
+const beritaBannerImg = "/src/assets/images/berita_banner_1780059627337.png";
+const tiktokBannerImg = "/src/assets/images/tiktok_banner_1780059643772.png";
+
+// Fallback high-quality CDN images for production robustness (e.g. if files are missing in git/Vercel)
+const INSIGHT_FALLBACK_IMAGES: Record<string, string> = {
+  [jurnalBannerImg]: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=800&q=80",
+  [beritaBannerImg]: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
+  [tiktokBannerImg]: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=800&q=80",
+};
 
 // --- INTERFACE DEFINITION ---
 interface ContentItem {
@@ -251,6 +258,10 @@ const InsightSosial: React.FC = () => {
                   src={TAB_INFOS[activeTab].banner} 
                   alt={activeTab} 
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const fallback = INSIGHT_FALLBACK_IMAGES[TAB_INFOS[activeTab].banner] || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80";
+                    e.currentTarget.src = fallback;
+                  }}
                   className="w-full h-full object-cover" 
                 />
               </div>
@@ -287,6 +298,9 @@ const InsightSosial: React.FC = () => {
                       <img 
                         src={item.image} 
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80";
+                        }}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90" 
                         alt={item.title} 
                       />

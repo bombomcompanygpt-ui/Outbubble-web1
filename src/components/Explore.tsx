@@ -3,12 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Compass, Newspaper, X, Play, ExternalLink, Clock, User, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-// Import local assets securely so Vite packages them correctly in the build bundles
-import iknIllustrationImg from '../assets/images/ikn_illustration_1780059498536.png';
-import makanGratisImg from '../assets/images/makan_gratis_1780059513810.png';
-import bbmPriceImg from '../assets/images/bbm_price_1780059533098.png';
-import campusDemoImg from '../assets/images/campus_demo_1780059552904.png';
-import driverFareImg from '../assets/images/driver_fare_1780059572138.png';
+// Local string asset paths to prevent compile-time import issues in build servers (e.g. Vercel)
+const iknIllustrationImg = "/src/assets/images/ikn_illustration_1780059498536.png";
+const makanGratisImg = "/src/assets/images/makan_gratis_1780059513810.png";
+const bbmPriceImg = "/src/assets/images/bbm_price_1780059533098.png";
+const campusDemoImg = "/src/assets/images/campus_demo_1780059552904.png";
+const driverFareImg = "/src/assets/images/driver_fare_1780059572138.png";
+
+// Fallback high-quality CDN images for production robustness (e.g. if files are missing in git/Vercel)
+const FALLBACK_IMAGES: Record<string, string> = {
+  [iknIllustrationImg]: "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=800&q=80",
+  [makanGratisImg]: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+  [bbmPriceImg]: "https://images.unsplash.com/photo-1527018601619-a508a2be00cd?auto=format&fit=crop&w=800&q=80",
+  [campusDemoImg]: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80",
+  [driverFareImg]: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=80",
+};
 
 // --- INTERFACE DEFINITION ---
 interface ContentItem {
@@ -167,7 +176,16 @@ const Explore: React.FC = () => {
               className="group bg-white rounded-[45px] overflow-hidden shadow-xl hover:shadow-[0_30px_60px_-15px_rgba(3,20,102,0.3)] transition-all duration-500 border border-slate-100 cursor-pointer flex flex-col"
             >
               <div className="relative aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5] overflow-hidden">
-                <img src={item.image} alt={item.title} referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                <img 
+                  src={item.image} 
+                  alt={item.title} 
+                  referrerPolicy="no-referrer" 
+                  onError={(e) => {
+                    const fallback = FALLBACK_IMAGES[item.image] || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80";
+                    e.currentTarget.src = fallback;
+                  }}
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#031466] via-[#031466]/20 to-transparent opacity-90" />
                 <div className="absolute bottom-6 left-6 right-6 text-white z-10">
                    <span className="bg-blue-500/90 backdrop-blur-md px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase mb-3 inline-flex items-center gap-2 shadow-lg">
