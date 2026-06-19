@@ -1,5 +1,7 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
+import { Firestore } from "@google-cloud/firestore";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -160,6 +162,35 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     createdAt?: string;
   }
 
+  let db: Firestore | null = null;
+  try {
+    let projectId = process.env.GOOGLE_CLOUD_PROJECT;
+    let databaseId = undefined;
+    
+    try {
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        projectId = config.projectId || projectId;
+        databaseId = config.firestoreDatabaseId || databaseId;
+      }
+    } catch (err) {
+      console.warn("Could not load firebase-applet-config.json:", err);
+    }
+
+    if (projectId) {
+      db = new Firestore({
+        projectId,
+        ...(databaseId ? { databaseId } : {})
+      });
+      console.log(`Firestore client initialized successfully. Project: ${projectId}, Database: ${databaseId || 'default'}`);
+    } else {
+      console.warn("No Google/Firebase project ID found. Firestore synchronization will fall back to local in-memory storage.");
+    }
+  } catch (error) {
+    console.error("Firestore initialization error. Falling back to in-memory:", error);
+  }
+
   let serverTopics: DiscussionTopic[] = [
     {
       id: "s1",
@@ -213,6 +244,60 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     }
   ];
 
+  // Set up Firebase Realtime stream syncer
+  if (db) {
+    try {
+      db.collection("topics")
+        .orderBy("timestamp", "desc")
+        .limit(100)
+        .onSnapshot(
+          (snapshot) => {
+            const topics: DiscussionTopic[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              topics.push({
+                id: doc.id,
+                title: data.title || "",
+                authorId: data.authorId || "anon",
+                authorName: data.authorName || "Anonymous",
+                authorAvatar: data.authorAvatar || "",
+                content: data.content || "",
+                image: data.image || undefined,
+                lens: data.lens || "Opini",
+                likes: data.likes || 0,
+                repliesCount: data.repliesCount || 0,
+                replies: data.replies || [],
+                repostsCount: data.repostsCount || 0,
+                timestamp: data.timestamp || Date.now(),
+                createdAt: data.createdAt || new Date().toISOString()
+              });
+            });
+
+            if (topics.length > 0) {
+              serverTopics = topics;
+              broadcastTopics();
+              console.log(`[Firestore Sync] Successfully synchronized ${topics.length} topics. Broadcasted to SSE clients.`);
+            } else if (snapshot.empty) {
+              // Seeding initial topics so database is ready
+              console.log("[Firestore Sync] Core database empty. Seeding initial topics...");
+              serverTopics.forEach(async (topic) => {
+                try {
+                  await db!.collection("topics").doc(topic.id).set(topic);
+                } catch (err) {
+                  console.error("Firestore Seeding error for document", topic.id, err);
+                }
+              });
+            }
+          },
+          (error) => {
+            console.error("Firestore onSnapshot subscription failed:", error);
+          }
+        );
+    } catch (subscriptionError) {
+      console.error("Failed to set up real-time snapshot listener on server startup:", subscriptionError);
+    }
+  }
+
   let sseClients: { id: number; res: any }[] = [];
 
   function broadcastTopics() {
@@ -251,7 +336,7 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     res.json(serverTopics);
   });
 
-  app.post("/api/forum/topics", (req, res) => {
+  app.post("/api/forum/topics", async (req, res) => {
     const topic = req.body;
     const newTopic: DiscussionTopic = {
       id: topic.id || `s-${Date.now()}`,
@@ -260,7 +345,7 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
       authorName: topic.authorName || "Anonymous",
       authorAvatar: topic.authorAvatar || "Guest",
       content: topic.content || "",
-      image: topic.image,
+      image: topic.image || null,
       lens: topic.lens || "Opini",
       likes: 0,
       repliesCount: 0,
@@ -269,14 +354,41 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
       timestamp: Date.now(),
       createdAt: new Date().toISOString()
     };
+
+    if (db) {
+      try {
+        const cleanDoc = JSON.parse(JSON.stringify(newTopic));
+        await db.collection("topics").doc(newTopic.id).set(cleanDoc);
+        return res.status(201).json(newTopic);
+      } catch (err) {
+        console.error("Firestore post failed, using local fallback", err);
+      }
+    }
+
     serverTopics.unshift(newTopic);
     res.status(201).json(newTopic);
     broadcastTopics();
   });
 
-  app.post("/api/forum/topics/:id/like", (req, res) => {
+  app.post("/api/forum/topics/:id/like", async (req, res) => {
     const { id } = req.params;
     const { isLikedByMe } = req.body; // boolean
+
+    if (db) {
+      try {
+        const docRef = db.collection("topics").doc(id);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+          const currentLikes = docSnap.data()?.likes || 0;
+          const newLikes = isLikedByMe ? Math.max(0, currentLikes - 1) : currentLikes + 1;
+          await docRef.update({ likes: newLikes });
+          return res.json({ success: true });
+        }
+      } catch (err) {
+        console.error("Firestore like failed, using local fallback", err);
+      }
+    }
+
     let found = false;
     serverTopics = serverTopics.map(t => {
       if (t.id === id) {
@@ -293,8 +405,23 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     if (found) broadcastTopics();
   });
 
-  app.post("/api/forum/topics/:id/repost", (req, res) => {
+  app.post("/api/forum/topics/:id/repost", async (req, res) => {
     const { id } = req.params;
+
+    if (db) {
+      try {
+        const docRef = db.collection("topics").doc(id);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+          const repCount = docSnap.data()?.repostsCount || 0;
+          await docRef.update({ repostsCount: repCount + 1 });
+          return res.json({ success: true });
+        }
+      } catch (err) {
+        console.error("Firestore repost failed, using local fallback", err);
+      }
+    }
+
     let found = false;
     serverTopics = serverTopics.map(t => {
       if (t.id === id) {
@@ -307,8 +434,18 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     if (found) broadcastTopics();
   });
 
-  app.delete("/api/forum/topics/:id", (req, res) => {
+  app.delete("/api/forum/topics/:id", async (req, res) => {
     const { id } = req.params;
+
+    if (db) {
+      try {
+        await db.collection("topics").doc(id).delete();
+        return res.json({ success: true });
+      } catch (err) {
+        console.error("Firestore delete failed, using local fallback", err);
+      }
+    }
+
     const beforeCount = serverTopics.length;
     serverTopics = serverTopics.filter(t => t.id !== id);
     const success = beforeCount !== serverTopics.length;
@@ -316,21 +453,42 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     if (success) broadcastTopics();
   });
 
-  app.post("/api/forum/topics/:id/replies", (req, res) => {
+  app.post("/api/forum/topics/:id/replies", async (req, res) => {
     const { id } = req.params;
     const { reply } = req.body;
+    
+    const newReply: Reply = {
+      id: reply.id || `r-${Date.now()}`,
+      authorName: reply.authorName || "Anonym",
+      content: reply.content || "",
+      createdAt: reply.createdAt || new Date().toISOString(),
+      avatarSeed: reply.avatarSeed || "Felix"
+    };
+
+    if (db) {
+      try {
+        const docRef = db.collection("topics").doc(id);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          const replies = data?.replies || [];
+          const updatedReplies = [newReply, ...replies];
+          await docRef.update({
+            replies: updatedReplies,
+            repliesCount: updatedReplies.length
+          });
+          return res.json({ success: true });
+        }
+      } catch (err) {
+        console.error("Firestore add reply failed, using local fallback", err);
+      }
+    }
+
     let found = false;
     serverTopics = serverTopics.map(t => {
       if (t.id === id) {
         found = true;
         const replies = t.replies || [];
-        const newReply: Reply = {
-          id: reply.id || `r-${Date.now()}`,
-          authorName: reply.authorName || "Anonym",
-          content: reply.content || "",
-          createdAt: reply.createdAt || new Date().toISOString(),
-          avatarSeed: reply.avatarSeed || "Felix"
-        };
         return {
           ...t,
           replies: [newReply, ...replies],
@@ -343,8 +501,27 @@ Kamu bisa melatih pemahamanmu di menu **Tes & Simulasi** lengkap dengan kuis int
     if (found) broadcastTopics();
   });
 
-  app.delete("/api/forum/topics/:id/replies/:replyId", (req, res) => {
+  app.delete("/api/forum/topics/:id/replies/:replyId", async (req, res) => {
     const { id, replyId } = req.params;
+
+    if (db) {
+      try {
+        const docRef = db.collection("topics").doc(id);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          const replies = (data?.replies || []).filter((r: any) => r.id !== replyId);
+          await docRef.update({
+            replies: replies,
+            repliesCount: replies.length
+          });
+          return res.json({ success: true });
+        }
+      } catch (err) {
+        console.error("Firestore delete reply failed, using local fallback", err);
+      }
+    }
+
     let found = false;
     serverTopics = serverTopics.map(t => {
       if (t.id === id) {
